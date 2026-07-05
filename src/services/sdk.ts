@@ -180,9 +180,9 @@ export function clearCacheByPrefix(prefix: string): void {
 export async function getFullQuotes(codes: string[], useCache = true) {
   const key = getCacheKey('getFullQuotes', codes);
   if (useCache) {
-    return withCache(key, DEFAULT_TTL.quotes, () => sdk.getFullQuotes(codes));
+    return withCache(key, DEFAULT_TTL.quotes, () => sdk.quotes.cn(codes));
   }
-  return sdk.getFullQuotes(codes);
+  return sdk.quotes.cn(codes);
 }
 
 /**
@@ -196,7 +196,7 @@ export async function getAllQuotesByCodes(
     onProgress?: (completed: number, total: number) => void;
   }
 ) {
-  return sdk.getAllQuotesByCodes(codes, options);
+  return sdk.batch.byCodes(codes, options);
 }
 
 /**
@@ -207,7 +207,7 @@ export async function getAllAShareQuotes(options?: {
   concurrency?: number;
   onProgress?: (completed: number, total: number) => void;
 }) {
-  return sdk.getAllAShareQuotes(options);
+  return sdk.batch.cn(options);
 }
 
 // ========== K 线数据 API ==========
@@ -226,7 +226,7 @@ export async function getHistoryKline(
 ) {
   const key = getCacheKey('getHistoryKline', symbol, options);
   return withCache(key, DEFAULT_TTL.historyKline, () =>
-    sdk.getHistoryKline(symbol, options)
+    sdk.kline.cn(symbol, options)
   );
 }
 
@@ -256,7 +256,7 @@ export async function getKlineWithIndicators(
 ) {
   const key = getCacheKey('getKlineWithIndicators', symbol, options);
   return withCache(key, DEFAULT_TTL.indicatorKline, () =>
-    sdk.getKlineWithIndicators(symbol, options)
+    sdk.kline.withIndicators(symbol, options)
   );
 }
 
@@ -272,14 +272,14 @@ export async function getMinuteKline(
     endDate?: string;
   }
 ) {
-  return sdk.getMinuteKline(symbol, options);
+  return sdk.kline.cnMinute(symbol, options);
 }
 
 /**
  * 获取当日分时
  */
 export async function getTodayTimeline(code: string) {
-  return sdk.getTodayTimeline(code);
+  return sdk.quotes.timeline(code);
 }
 
 // ========== 板块 API ==========
@@ -289,7 +289,7 @@ export async function getTodayTimeline(code: string) {
  */
 export async function getIndustryList() {
   const key = getCacheKey('getIndustryList');
-  return withCache(key, DEFAULT_TTL.boardList, () => sdk.getIndustryList());
+  return withCache(key, DEFAULT_TTL.boardList, () => sdk.board.industry.list());
 }
 
 /**
@@ -297,7 +297,7 @@ export async function getIndustryList() {
  */
 export async function getConceptList() {
   const key = getCacheKey('getConceptList');
-  return withCache(key, DEFAULT_TTL.boardList, () => sdk.getConceptList());
+  return withCache(key, DEFAULT_TTL.boardList, () => sdk.board.concept.list());
 }
 
 /**
@@ -306,7 +306,7 @@ export async function getConceptList() {
 export async function getIndustryConstituents(symbol: string) {
   const key = getCacheKey('getIndustryConstituents', symbol);
   return withCache(key, DEFAULT_TTL.constituents, () =>
-    sdk.getIndustryConstituents(symbol)
+    sdk.board.industry.constituents(symbol)
   );
 }
 
@@ -316,7 +316,7 @@ export async function getIndustryConstituents(symbol: string) {
 export async function getConceptConstituents(symbol: string) {
   const key = getCacheKey('getConceptConstituents', symbol);
   return withCache(key, DEFAULT_TTL.constituents, () =>
-    sdk.getConceptConstituents(symbol)
+    sdk.board.concept.constituents(symbol)
   );
 }
 
@@ -334,7 +334,7 @@ export async function getIndustryKline(
 ) {
   const key = getCacheKey('getIndustryKline', symbol, options);
   return withCache(key, DEFAULT_TTL.historyKline, () =>
-    sdk.getIndustryKline(symbol, options)
+    sdk.board.industry.kline(symbol, options)
   );
 }
 
@@ -352,7 +352,7 @@ export async function getConceptKline(
 ) {
   const key = getCacheKey('getConceptKline', symbol, options);
   return withCache(key, DEFAULT_TTL.historyKline, () =>
-    sdk.getConceptKline(symbol, options)
+    sdk.board.concept.kline(symbol, options)
   );
 }
 
@@ -363,7 +363,7 @@ export async function getIndustryMinuteKline(
   symbol: string,
   options?: { period?: '1' | '5' | '15' | '30' | '60' }
 ) {
-  return sdk.getIndustryMinuteKline(symbol, options);
+  return sdk.board.industry.minuteKline(symbol, options);
 }
 
 /**
@@ -373,21 +373,21 @@ export async function getConceptMinuteKline(
   symbol: string,
   options?: { period?: '1' | '5' | '15' | '30' | '60' }
 ) {
-  return sdk.getConceptMinuteKline(symbol, options);
+  return sdk.board.concept.minuteKline(symbol, options);
 }
 
 /**
  * 获取行业 Spot 指标
  */
 export async function getIndustrySpot(symbol: string) {
-  return sdk.getIndustrySpot(symbol);
+  return sdk.board.industry.spot(symbol);
 }
 
 /**
  * 获取概念 Spot 指标
  */
 export async function getConceptSpot(symbol: string) {
-  return sdk.getConceptSpot(symbol);
+  return sdk.board.concept.spot(symbol);
 }
 
 // ========== 资金与大单 API ==========
@@ -397,7 +397,7 @@ export async function getConceptSpot(symbol: string) {
  */
 export async function getFundFlow(codes: string[]) {
   const key = getCacheKey('getFundFlow', codes);
-  return withCache(key, DEFAULT_TTL.fundFlow, () => sdk.getFundFlow(codes));
+  return withCache(key, DEFAULT_TTL.fundFlow, () => sdk.quotes.fundFlow(codes));
 }
 
 /**
@@ -406,7 +406,7 @@ export async function getFundFlow(codes: string[]) {
 export async function getPanelLargeOrder(codes: string[]) {
   const key = getCacheKey('getPanelLargeOrder', codes);
   return withCache(key, DEFAULT_TTL.fundFlow, () =>
-    sdk.getPanelLargeOrder(codes)
+    sdk.quotes.largeOrder(codes)
   );
 }
 
@@ -421,7 +421,7 @@ export async function getIndividualFundFlow(
 ) {
   const key = getCacheKey('getIndividualFundFlow', symbol, options);
   return withCache(key, DEFAULT_TTL.capitalHistory, () =>
-    sdk.getIndividualFundFlow(symbol, options)
+    sdk.fundFlow.individual(symbol, options)
   );
 }
 
@@ -430,7 +430,7 @@ export async function getIndividualFundFlow(
  */
 export async function getMarketFundFlow() {
   const key = getCacheKey('getMarketFundFlow');
-  return withCache(key, DEFAULT_TTL.capitalHistory, () => sdk.getMarketFundFlow());
+  return withCache(key, DEFAULT_TTL.capitalHistory, () => sdk.fundFlow.market());
 }
 
 /**
@@ -440,7 +440,7 @@ export async function getFundFlowRank(options?: {
   indicator?: 'today' | '3day' | '5day' | '10day';
 }) {
   const key = getCacheKey('getFundFlowRank', options);
-  return withCache(key, DEFAULT_TTL.fundFlow, () => sdk.getFundFlowRank(options));
+  return withCache(key, DEFAULT_TTL.fundFlow, () => sdk.fundFlow.rank(options));
 }
 
 /**
@@ -452,7 +452,7 @@ export async function getSectorFundFlowRank(options?: {
 }) {
   const key = getCacheKey('getSectorFundFlowRank', options);
   return withCache(key, DEFAULT_TTL.fundFlow, () =>
-    sdk.getSectorFundFlowRank(options)
+    sdk.fundFlow.sectorRank(options)
   );
 }
 
@@ -467,7 +467,7 @@ export async function getSectorFundFlowHistory(
 ) {
   const key = getCacheKey('getSectorFundFlowHistory', symbol, options);
   return withCache(key, DEFAULT_TTL.capitalHistory, () =>
-    sdk.getSectorFundFlowHistory(symbol, options)
+    sdk.fundFlow.sectorHistory(symbol, options)
   );
 }
 
@@ -476,7 +476,7 @@ export async function getSectorFundFlowHistory(
  */
 export async function getNorthboundMinute(direction: 'north' | 'south' = 'north') {
   const key = getCacheKey('getNorthboundMinute', direction);
-  return withCache(key, DEFAULT_TTL.northbound, () => sdk.getNorthboundMinute(direction));
+  return withCache(key, DEFAULT_TTL.northbound, () => sdk.northbound.minute(direction));
 }
 
 /**
@@ -484,7 +484,7 @@ export async function getNorthboundMinute(direction: 'north' | 'south' = 'north'
  */
 export async function getNorthboundFlowSummary() {
   const key = getCacheKey('getNorthboundFlowSummary');
-  return withCache(key, DEFAULT_TTL.northbound, () => sdk.getNorthboundFlowSummary());
+  return withCache(key, DEFAULT_TTL.northbound, () => sdk.northbound.summary());
 }
 
 /**
@@ -496,7 +496,7 @@ export async function getNorthboundHoldingRank(options?: {
   date?: string;
 }) {
   const key = getCacheKey('getNorthboundHoldingRank', options);
-  return withCache(key, DEFAULT_TTL.northbound, () => sdk.getNorthboundHoldingRank(options));
+  return withCache(key, DEFAULT_TTL.northbound, () => sdk.northbound.holdingRank(options));
 }
 
 /**
@@ -511,7 +511,7 @@ export async function getNorthboundHistory(
 ) {
   const key = getCacheKey('getNorthboundHistory', direction, options);
   return withCache(key, DEFAULT_TTL.northbound, () =>
-    sdk.getNorthboundHistory(direction, options)
+    sdk.northbound.history(direction, options)
   );
 }
 
@@ -527,7 +527,7 @@ export async function getNorthboundIndividual(
 ) {
   const key = getCacheKey('getNorthboundIndividual', symbol, options);
   return withCache(key, DEFAULT_TTL.northbound, () =>
-    sdk.getNorthboundIndividual(symbol, options)
+    sdk.northbound.individual(symbol, options)
   );
 }
 
@@ -539,7 +539,7 @@ export async function getZTPool(
   date?: string
 ) {
   const key = getCacheKey('getZTPool', type, date);
-  return withCache(key, DEFAULT_TTL.stockChanges, () => sdk.getZTPool(type, date));
+  return withCache(key, DEFAULT_TTL.stockChanges, () => sdk.marketEvent.ztPool(type, date));
 }
 
 /**
@@ -571,7 +571,7 @@ export async function getStockChanges(
     | 'drop_60d' = 'large_buy'
 ) {
   const key = getCacheKey('getStockChanges', type);
-  return withCache(key, DEFAULT_TTL.stockChanges, () => sdk.getStockChanges(type));
+  return withCache(key, DEFAULT_TTL.stockChanges, () => sdk.marketEvent.stockChanges(type));
 }
 
 /**
@@ -579,7 +579,7 @@ export async function getStockChanges(
  */
 export async function getBoardChanges() {
   const key = getCacheKey('getBoardChanges');
-  return withCache(key, DEFAULT_TTL.boardChanges, () => sdk.getBoardChanges());
+  return withCache(key, DEFAULT_TTL.boardChanges, () => sdk.marketEvent.boardChanges());
 }
 
 /**
@@ -590,7 +590,7 @@ export async function getDragonTigerDetail(options: {
   endDate: string;
 }) {
   const key = getCacheKey('getDragonTigerDetail', options);
-  return withCache(key, DEFAULT_TTL.dragonTiger, () => sdk.getDragonTigerDetail(options));
+  return withCache(key, DEFAULT_TTL.dragonTiger, () => sdk.dragonTiger.detail(options));
 }
 
 /**
@@ -601,7 +601,7 @@ export async function getBlockTradeDetail(options?: {
   endDate?: string;
 }) {
   const key = getCacheKey('getBlockTradeDetail', options);
-  return withCache(key, DEFAULT_TTL.blockTrade, () => sdk.getBlockTradeDetail(options));
+  return withCache(key, DEFAULT_TTL.blockTrade, () => sdk.blockTrade.detail(options));
 }
 
 /**
@@ -609,7 +609,7 @@ export async function getBlockTradeDetail(options?: {
  */
 export async function getMarginAccountInfo() {
   const key = getCacheKey('getMarginAccountInfo');
-  return withCache(key, DEFAULT_TTL.margin, () => sdk.getMarginAccountInfo());
+  return withCache(key, DEFAULT_TTL.margin, () => sdk.margin.accountInfo());
 }
 
 // ========== 搜索 API ==========
@@ -631,7 +631,7 @@ export async function search(keyword: string) {
  */
 export async function getDividendDetail(symbol: string): Promise<DividendDetail[]> {
   const key = getCacheKey('getDividendDetail', symbol);
-  return withCache(key, DEFAULT_TTL.dividends, () => sdk.getDividendDetail(symbol));
+  return withCache(key, DEFAULT_TTL.dividends, () => sdk.reference.dividendDetail(symbol));
 }
 
 /**
@@ -639,5 +639,5 @@ export async function getDividendDetail(symbol: string): Promise<DividendDetail[
  */
 export async function getTradingCalendar() {
   const key = getCacheKey('getTradingCalendar');
-  return withCache(key, 3600000, () => sdk.getTradingCalendar()); // 1 小时缓存
+  return withCache(key, 3600000, () => sdk.reference.tradingCalendar()); // 1 小时缓存
 }

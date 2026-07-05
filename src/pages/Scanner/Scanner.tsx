@@ -455,7 +455,7 @@ export function Scanner() {
                       </button>
                     ))}
                   </div>
-                  <p className={styles.helperText}>来源于 stock-sdk 1.9.0 涨停池/强势股动态股票池</p>
+                  <p className={styles.helperText}>来源于 stock-sdk v2 涨停池/强势股动态股票池</p>
                 </div>
               )}
 
@@ -487,7 +487,7 @@ export function Scanner() {
                       </button>
                     ))}
                   </div>
-                  <p className={styles.helperText}>来源于 stock-sdk 1.9.0 盘口异动流，已按股票去重</p>
+                  <p className={styles.helperText}>来源于 stock-sdk v2 盘口异动流，已按股票去重</p>
                 </div>
               )}
 

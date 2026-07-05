@@ -13,12 +13,14 @@ import {
   calcOBV,
   calcROC,
   calcSAR,
-  type DividendDetail,
-  type FundFlow,
-  type FullQuote,
-  type HistoryKline,
-  type PanelLargeOrder,
-  type TodayTimelineResponse,
+} from 'stock-sdk/indicators';
+import type {
+  DividendDetail,
+  FundFlow,
+  FullQuote,
+  HistoryKline,
+  PanelLargeOrder,
+  TodayTimelineResponse,
 } from 'stock-sdk';
 import { LazyEChart } from '@/components/charts/LazyEChart';
 import { Button, Card, Loading, Tabs, useToast } from '@/components/common';

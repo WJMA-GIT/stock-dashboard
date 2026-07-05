@@ -1863,10 +1863,10 @@ source-map-js@^1.2.1:
   resolved "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz"
   integrity sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==
 
-stock-sdk@1.9.0:
-  version "1.9.0"
-  resolved "https://registry.yarnpkg.com/stock-sdk/-/stock-sdk-1.9.0.tgz#c26612d5b9688df9ebe1572c28254a290b3a7e6c"
-  integrity sha512-OfzSrxQ/n8KfvTepVIIsituDybR+F4RBO8BIhCCsA347tWrff8j1+qr8wGzYHwTFPMbEFf9SdwpqTDyQcaG2yw==
+stock-sdk@^2.3.0:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/stock-sdk/-/stock-sdk-2.3.0.tgz#c6e610b9f950302ffa6b3d6ce2ef956b453f0cdb"
+  integrity sha512-cuexwxOeQ/Gp+yHHBeNfI/5F4h7m3OTRTPdR1LOim5bXDCihyriwDQCCgbSuyJUeB2GVH2SEus+pP5zZwXuiEg==
 
 strip-json-comments@^3.1.1:
   version "3.1.1"
