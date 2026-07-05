@@ -6,7 +6,7 @@
   left: 0;
   width: var(--sidebar-width);
   height: 100vh;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border-right: 1px solid var(--border-primary);
   display: flex;
   flex-direction: column;
@@ -20,7 +20,7 @@
   gap: var(--spacing-sm);
   padding: 0 var(--spacing-lg);
   border-bottom: 1px solid var(--border-primary);
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
 }
 
 .logoIcon {

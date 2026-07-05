@@ -4,38 +4,38 @@
    ============================================ */
 
 :root {
-  /* 基础色板 - 深色主题 (纯色扁平化) */
-  --bg-primary: #0f172a;      /* 纯深蓝灰背景 Slate 900 */
-  --bg-secondary: #1e293b;    /* 稍微亮一点的 Slate 800，用于卡片/容器 */
-  --bg-tertiary: #0f172a;     /* 嵌套容器背景 Slate 900 */
-  --bg-elevated: #334155;     /* 悬浮/激活色 Slate 700 */
-  --bg-overlay: #0f172a;      /* 覆盖层背景 */
-  --bg-glass: #1e293b;        /* 扁平化设计中同 secondary */
+  /* 基础色板 - 深色主题 (纯色极简 Zinc 风格) */
+  --bg-primary: #09090b;      /* Zinc 950 - 极致深灰/近黑 */
+  --bg-secondary: #18181b;    /* Zinc 900 - 卡片背景 */
+  --bg-tertiary: #09090b;     /* 嵌套容器背景 */
+  --bg-elevated: #27272a;     /* Zinc 800 */
+  --bg-overlay: #09090b;
+  --bg-glass: #18181b;
   --page-gradient: var(--bg-primary); /* 取消背景渐变 */
   
   /* 边框 */
-  --border-primary: #334155;  /* Slate 700 */
-  --border-secondary: #1e293b;/* Slate 800 */
-  --border-strong: #475569;   /* Slate 600 */
-  --border-focus: #38bdf8;    /* 扁平强调蓝 Sky 400 */
+  --border-primary: #27272a;  /* Zinc 800 - 非常细致的暗灰线 */
+  --border-secondary: #18181b;/* Zinc 900 */
+  --border-strong: #3f3f46;   /* Zinc 700 */
+  --border-focus: #e4e4e7;    /* Zinc 200 */
   
   /* 文字 */
-  --text-primary: #f8fafc;    /* Slate 50 */
-  --text-secondary: #cbd5e1;  /* Slate 300 */
-  --text-tertiary: #94a3b8;   /* Slate 400 */
-  --text-muted: #64748b;      /* Slate 500 */
+  --text-primary: #fafafa;    /* Zinc 50 - 纯白 */
+  --text-secondary: #d4d4d8;  /* Zinc 300 - 浅灰 */
+  --text-tertiary: #a1a1aa;   /* Zinc 400 - 灰 */
+  --text-muted: #71717a;      /* Zinc 500 - 暗灰 */
   
-  /* 涨跌色 - 红涨绿跌 */
+  /* 涨跌色 - 选用极简扁平的高纯度红色/绿色 */
   --color-rise: #ef4444;      /* Red 500 */
   --color-rise-bg: rgba(239, 68, 68, 0.08);
   --color-fall: #10b981;      /* Emerald 500 */
   --color-fall-bg: rgba(16, 185, 129, 0.08);
-  --color-flat: #64748b;
+  --color-flat: #71717a;
   
-  /* 强调色 */
-  --color-accent: #38bdf8;    /* Sky 400 */
-  --color-accent-hover: #0ea5e9;
-  --color-accent-bg: rgba(56, 189, 248, 0.08);
+  /* 强调色 - 采用经典的极简蓝 */
+  --color-accent: #3b82f6;    /* Premium Blue */
+  --color-accent-hover: #2563eb;
+  --color-accent-bg: rgba(59, 130, 246, 0.08);
   
   /* 功能色 */
   --color-warning: #f59e0b;   /* Amber 500 */
@@ -94,31 +94,31 @@
 
 /* 浅色主题 */
 [data-theme="light"] {
-  /* 基础色板 - 浅色主题 (纯色扁平化) */
-  --bg-primary: #f8fafc;      /* Slate 50 */
+  /* 基础色板 - 浅色主题 (纯色极简 Zinc 风格) */
+  --bg-primary: #fafafa;      /* Zinc 50 - 极致清爽淡白 */
   --bg-secondary: #ffffff;    /* 纯白 */
-  --bg-tertiary: #f1f5f9;     /* Slate 100 */
-  --bg-elevated: #cbd5e1;     /* Slate 300 */
-  --bg-overlay: #f8fafc;
+  --bg-tertiary: #f4f4f5;     /* Zinc 100 */
+  --bg-elevated: #e4e4e7;     /* Zinc 200 */
+  --bg-overlay: #fafafa;
   --bg-glass: #ffffff;
   --page-gradient: var(--bg-primary);
   
   /* 边框 */
-  --border-primary: #e2e8f0;  /* Slate 200 */
-  --border-secondary: #f1f5f9;/* Slate 100 */
-  --border-strong: #cbd5e1;   /* Slate 300 */
-  --border-focus: #0284c7;    /* Sky 600 */
+  --border-primary: #e4e4e7;  /* Zinc 200 */
+  --border-secondary: #f4f4f5;/* Zinc 100 */
+  --border-strong: #d4d4d8;   /* Zinc 300 */
+  --border-focus: #18181b;    /* Zinc 900 */
   
   /* 文字 */
-  --text-primary: #0f172a;    /* Slate 900 */
-  --text-secondary: #334155;  /* Slate 700 */
-  --text-tertiary: #64748b;   /* Slate 500 */
-  --text-muted: #94a3b8;      /* Slate 400 */
+  --text-primary: #09090b;    /* Zinc 950 */
+  --text-secondary: #27272a;  /* Zinc 800 */
+  --text-tertiary: #71717a;   /* Zinc 500 */
+  --text-muted: #a1a1aa;      /* Zinc 400 */
   
   /* 强调色 */
-  --color-accent: #0284c7;    /* Sky 600 */
-  --color-accent-hover: #0369a1;
-  --color-accent-bg: rgba(2, 132, 199, 0.08);
+  --color-accent: #2563eb;    /* Premium Blue Light */
+  --color-accent-hover: #1d4ed8;
+  --color-accent-bg: rgba(37, 99, 235, 0.08);
   
   /* 功能色 */
   --color-warning: #d97706;
