@@ -4,48 +4,44 @@
    ============================================ */
 
 :root {
-  /* 基础色板 - 深色主题 */
-  --bg-primary: #08111f;
-  --bg-secondary: #101c31;
-  --bg-tertiary: #17263f;
-  --bg-elevated: #1b2d49;
-  --bg-overlay: rgba(12, 21, 36, 0.82);
-  --bg-glass: rgba(23, 38, 63, 0.74);
-  --page-gradient:
-    radial-gradient(circle at top right, rgba(88, 166, 255, 0.16), transparent 24%),
-    radial-gradient(circle at left 18%, rgba(56, 189, 248, 0.08), transparent 28%),
-    radial-gradient(circle at bottom left, rgba(99, 102, 241, 0.12), transparent 28%),
-    linear-gradient(180deg, #09111f 0%, var(--bg-primary) 42%, #09111f 100%);
+  /* 基础色板 - 深色主题 (纯色扁平化) */
+  --bg-primary: #0f172a;      /* 纯深蓝灰背景 Slate 900 */
+  --bg-secondary: #1e293b;    /* 稍微亮一点的 Slate 800，用于卡片/容器 */
+  --bg-tertiary: #0f172a;     /* 嵌套容器背景 Slate 900 */
+  --bg-elevated: #334155;     /* 悬浮/激活色 Slate 700 */
+  --bg-overlay: #0f172a;      /* 覆盖层背景 */
+  --bg-glass: #1e293b;        /* 扁平化设计中同 secondary */
+  --page-gradient: var(--bg-primary); /* 取消背景渐变 */
   
   /* 边框 */
-  --border-primary: rgba(140, 167, 205, 0.16);
-  --border-secondary: rgba(140, 167, 205, 0.08);
-  --border-strong: rgba(140, 167, 205, 0.26);
-  --border-focus: #5ea7ff;
+  --border-primary: #334155;  /* Slate 700 */
+  --border-secondary: #1e293b;/* Slate 800 */
+  --border-strong: #475569;   /* Slate 600 */
+  --border-focus: #38bdf8;    /* 扁平强调蓝 Sky 400 */
   
   /* 文字 */
-  --text-primary: #eef5ff;
-  --text-secondary: #9fb2cc;
-  --text-tertiary: #7286a3;
-  --text-muted: #50617d;
+  --text-primary: #f8fafc;    /* Slate 50 */
+  --text-secondary: #cbd5e1;  /* Slate 300 */
+  --text-tertiary: #94a3b8;   /* Slate 400 */
+  --text-muted: #64748b;      /* Slate 500 */
   
   /* 涨跌色 - 红涨绿跌 */
-  --color-rise: #ef4444;
-  --color-rise-bg: rgba(239, 68, 68, 0.12);
-  --color-fall: #22c55e;
-  --color-fall-bg: rgba(34, 197, 94, 0.12);
-  --color-flat: #8b949e;
+  --color-rise: #ef4444;      /* Red 500 */
+  --color-rise-bg: rgba(239, 68, 68, 0.08);
+  --color-fall: #10b981;      /* Emerald 500 */
+  --color-fall-bg: rgba(16, 185, 129, 0.08);
+  --color-flat: #64748b;
   
   /* 强调色 */
-  --color-accent: #69b2ff;
-  --color-accent-hover: #8cc4ff;
-  --color-accent-bg: rgba(105, 178, 255, 0.15);
+  --color-accent: #38bdf8;    /* Sky 400 */
+  --color-accent-hover: #0ea5e9;
+  --color-accent-bg: rgba(56, 189, 248, 0.08);
   
   /* 功能色 */
-  --color-warning: #d29922;
-  --color-warning-bg: rgba(210, 153, 34, 0.12);
-  --color-error: #f85149;
-  --color-success: #3fb950;
+  --color-warning: #f59e0b;   /* Amber 500 */
+  --color-warning-bg: rgba(245, 158, 11, 0.08);
+  --color-error: #ef4444;
+  --color-success: #10b981;
   
   /* 图表色板 */
   --chart-ma5: #f59e0b;
@@ -69,24 +65,24 @@
   --spacing-2xl: 32px;
   
   /* 圆角 */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
   
   /* 阴影 */
-  --shadow-sm: 0 10px 24px rgba(3, 8, 18, 0.16);
-  --shadow-md: 0 18px 44px rgba(3, 8, 18, 0.24);
-  --shadow-lg: 0 28px 72px rgba(3, 8, 18, 0.32);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   
   /* 过渡 */
   --transition-fast: 0.1s ease;
-  --transition-normal: 0.2s ease;
-  --transition-slow: 0.3s ease;
+  --transition-normal: 0.15s ease;
+  --transition-slow: 0.2s ease;
   
   /* 字体 */
   --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
-  --font-sans: 'Plus Jakarta Sans', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-size-xs: 11px;
   --font-size-sm: 12px;
   --font-size-base: 13px;
@@ -98,54 +94,50 @@
 
 /* 浅色主题 */
 [data-theme="light"] {
-  /* 基础色板 - 浅色主题 */
-  --bg-primary: #f4f7fb;
-  --bg-secondary: rgba(255, 255, 255, 0.88);
-  --bg-tertiary: #edf2f8;
-  --bg-elevated: #ffffff;
-  --bg-overlay: rgba(255, 255, 255, 0.9);
-  --bg-glass: rgba(255, 255, 255, 0.74);
-  --page-gradient:
-    radial-gradient(circle at top right, rgba(13, 115, 224, 0.08), transparent 22%),
-    radial-gradient(circle at left 20%, rgba(20, 184, 166, 0.08), transparent 26%),
-    radial-gradient(circle at bottom left, rgba(99, 102, 241, 0.08), transparent 24%),
-    linear-gradient(180deg, #f7faff 0%, var(--bg-primary) 44%, #eef3f9 100%);
+  /* 基础色板 - 浅色主题 (纯色扁平化) */
+  --bg-primary: #f8fafc;      /* Slate 50 */
+  --bg-secondary: #ffffff;    /* 纯白 */
+  --bg-tertiary: #f1f5f9;     /* Slate 100 */
+  --bg-elevated: #cbd5e1;     /* Slate 300 */
+  --bg-overlay: #f8fafc;
+  --bg-glass: #ffffff;
+  --page-gradient: var(--bg-primary);
   
   /* 边框 */
-  --border-primary: rgba(111, 129, 153, 0.18);
-  --border-secondary: rgba(111, 129, 153, 0.08);
-  --border-strong: rgba(111, 129, 153, 0.26);
-  --border-focus: #0969da;
+  --border-primary: #e2e8f0;  /* Slate 200 */
+  --border-secondary: #f1f5f9;/* Slate 100 */
+  --border-strong: #cbd5e1;   /* Slate 300 */
+  --border-focus: #0284c7;    /* Sky 600 */
   
   /* 文字 */
-  --text-primary: #152033;
-  --text-secondary: #54657f;
-  --text-tertiary: #7f90a8;
-  --text-muted: #aab6c7;
+  --text-primary: #0f172a;    /* Slate 900 */
+  --text-secondary: #334155;  /* Slate 700 */
+  --text-tertiary: #64748b;   /* Slate 500 */
+  --text-muted: #94a3b8;      /* Slate 400 */
   
   /* 强调色 */
-  --color-accent: #0d73e0;
-  --color-accent-hover: #0958b0;
-  --color-accent-bg: rgba(13, 115, 224, 0.12);
+  --color-accent: #0284c7;    /* Sky 600 */
+  --color-accent-hover: #0369a1;
+  --color-accent-bg: rgba(2, 132, 199, 0.08);
   
   /* 功能色 */
-  --color-warning: #bf8700;
-  --color-warning-bg: rgba(191, 135, 0, 0.1);
-  --color-error: #cf222e;
-  --color-success: #1a7f37;
+  --color-warning: #d97706;
+  --color-warning-bg: rgba(217, 119, 6, 0.08);
+  --color-error: #dc2626;
+  --color-success: #16a34a;
   
   /* 阴影 */
-  --shadow-sm: 0 10px 24px rgba(31, 35, 40, 0.08);
-  --shadow-md: 0 18px 44px rgba(31, 35, 40, 0.12);
-  --shadow-lg: 0 28px 72px rgba(31, 35, 40, 0.18);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
 }
 
 /* 绿涨红跌模式 */
 [data-color-mode="green-rise"] {
-  --color-rise: #22c55e;
-  --color-rise-bg: rgba(34, 197, 94, 0.12);
+  --color-rise: #10b981;
   --color-fall: #ef4444;
-  --color-fall-bg: rgba(239, 68, 68, 0.12);
+  --color-rise-bg: rgba(16, 185, 129, 0.08);
+  --color-fall-bg: rgba(239, 68, 68, 0.08);
 }
 
 /* 重置样式 */
@@ -173,30 +165,10 @@ body {
   overflow-x: hidden;
 }
 
+/* 移除背景光晕元素 */
 body::before,
 body::after {
-  content: '';
-  position: fixed;
-  inset: auto;
-  width: 38vw;
-  height: 38vw;
-  border-radius: 999px;
-  pointer-events: none;
-  filter: blur(80px);
-  opacity: 0.24;
-  z-index: -1;
-}
-
-body::before {
-  top: -12vw;
-  right: -10vw;
-  background: rgba(88, 166, 255, 0.28);
-}
-
-body::after {
-  left: -14vw;
-  bottom: -14vw;
-  background: rgba(20, 184, 166, 0.18);
+  display: none !important;
 }
 
 #root {

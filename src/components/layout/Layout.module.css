@@ -20,20 +20,6 @@
   margin: 0 auto;
 }
 
-.content::before {
-  content: '';
-  position: fixed;
-  top: 84px;
-  right: 8%;
-  width: 320px;
-  height: 320px;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(105, 178, 255, 0.12), transparent 70%);
-  pointer-events: none;
-  filter: blur(24px);
-  z-index: -1;
-}
-
 /* 底部声明 */
 .footer {
   display: flex;
