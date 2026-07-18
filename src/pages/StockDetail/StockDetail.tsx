@@ -1013,7 +1013,9 @@ export function StockDetail() {
     }
 
     const value = Number(alertValue);
-    if (!Number.isFinite(value) || value <= 0) {
+    // 涨跌幅类阈值合法值域含负数（跌幅告警），只有价格/成交额类才要求正数
+    const requiresPositive = !['change_percent_gte', 'change_percent_lte'].includes(alertType);
+    if (!Number.isFinite(value) || (requiresPositive && value <= 0)) {
       toast.warning('请输入有效的告警阈值');
       return;
     }

@@ -85,6 +85,10 @@ function createInitialColumns() {
 }
 
 function matchesAlertRule(rule: AlertRule, quote: FullQuote) {
+  // SDK 对空行情字段一律填 0，price=0 的行触发的告警全是误报（停牌/退市/脏数据）
+  if (!quote.price) {
+    return false;
+  }
   switch (rule.type) {
     case 'price_gte':
       return quote.price >= rule.value;
@@ -243,9 +247,14 @@ export function Watchlist() {
           triggered.push(rule);
         });
 
-      triggered.slice(0, 3).forEach((rule) => {
+      // 超限聚合成一条：全部规则都已写 lastTriggeredAt（冷却语义一致），不逐条轰炸
+      const MAX_ALERT_TOASTS = 2;
+      triggered.slice(0, MAX_ALERT_TOASTS).forEach((rule) => {
         toast.info(`${rule.name} 触发告警: ${formatAlertRule(rule)}`);
       });
+      if (triggered.length > MAX_ALERT_TOASTS) {
+        toast.info(`另有 ${triggered.length - MAX_ALERT_TOASTS} 条告警触发，详见告警面板`);
+      }
     } catch (error) {
       console.error('Fetch quotes error:', error);
     }
