@@ -12,6 +12,32 @@ export interface AnalysisProgress {
   stage: string;
 }
 
+// 涨跌停幅度按板块区分：创业板/科创板 20%、北交所 30%、主板 ST 5%、其余 10%；
+// 创业板/科创板的 ST 仍按 20%，所以先判板块再判 ST
+const LIMIT_TOLERANCE = 0.2;
+
+export function getLimitPercent(code: string, name: string): number {
+  const { symbol } = parseStockCode(code);
+  if (/^(300|301|688|689)/.test(symbol)) return 20;
+  if (/^(4|8|92)/.test(symbol)) return 30;
+  if (name.includes('ST')) return 5;
+  return 10;
+}
+
+export function isLimitUp(
+  quote: Pick<FullQuote, 'code' | 'name'> & { changePercent: number | null }
+): boolean {
+  if (quote.changePercent === null) return false;
+  return quote.changePercent >= getLimitPercent(quote.code, quote.name) - LIMIT_TOLERANCE;
+}
+
+export function isLimitDown(
+  quote: Pick<FullQuote, 'code' | 'name'> & { changePercent: number | null }
+): boolean {
+  if (quote.changePercent === null) return false;
+  return quote.changePercent <= -(getLimitPercent(quote.code, quote.name) - LIMIT_TOLERANCE);
+}
+
 export interface TimelinePoint {
   time: string;
   price: number;

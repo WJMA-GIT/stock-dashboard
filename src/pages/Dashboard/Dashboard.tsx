@@ -18,6 +18,7 @@ import {
   getSectorFundFlowRank,
 } from '@/services/sdk';
 import { getAllWatchlistCodes } from '@/services/storage';
+import { isLimitDown, isLimitUp } from '@/services/analysis';
 import {
   formatPrice,
   formatPercent,
@@ -90,27 +91,24 @@ export function Dashboard() {
   const breadthRefreshInterval = Math.max(listRefreshInterval * 4, 60000);
 
   // 只加载指数和自选数据（板块数据由全局 Context 提供）
+  // 自选代码在闭包内即时读取：依赖 length 的 memo 化会让轮询一直拉旧代码列表
   const fetchQuoteData = useCallback(async () => {
     try {
-      // 获取指数行情
-      const indicesData = await getFullQuotes(MAIN_INDICES);
+      const codes = getAllWatchlistCodes();
+      const [indicesData, watchlistData] = await Promise.all([
+        getFullQuotes(MAIN_INDICES),
+        codes.length > 0
+          ? getFullQuotes(codes.slice(0, 50))
+          : Promise.resolve<FullQuote[]>([]),
+      ]);
       setIndices(indicesData);
-
-      // 如果有自选，获取自选行情
-      if (watchlistCodes.length > 0) {
-        const watchlistData = await getFullQuotes(watchlistCodes.slice(0, 50));
-        setWatchlistQuotes(watchlistData);
-      } else {
-        setWatchlistQuotes([]);
-      }
+      setWatchlistQuotes(watchlistData);
     } catch (error) {
       console.error('Dashboard fetch error:', error);
     } finally {
-      // 无论成功或失败，都结束初始加载状态
       setInitialLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchlistCodes.length]);
+  }, []);
 
   const fetchMarketOverview = useCallback(async () => {
     try {
@@ -206,8 +204,8 @@ export function Dashboard() {
         else if (quote.changePercent < 0) summary.fallCount += 1;
         else summary.flatCount += 1;
 
-        if (quote.changePercent >= 9.8) summary.limitUpCount += 1;
-        if (quote.changePercent <= -9.8) summary.limitDownCount += 1;
+        if (isLimitUp(quote)) summary.limitUpCount += 1;
+        if (isLimitDown(quote)) summary.limitDownCount += 1;
         summary.totalAmount += quote.amount ?? 0;
         return summary;
       },

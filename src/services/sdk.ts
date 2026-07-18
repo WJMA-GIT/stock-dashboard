@@ -18,6 +18,49 @@ export interface AppSearchResult extends SDKSearchResult {
   entityType: SearchEntityType;
   isSupported: boolean;
   route: string | null;
+  typeLabel: string;
+}
+
+const SEARCH_CATEGORY_LABELS: Record<string, string> = {
+  stock: '股票',
+  index: '指数',
+  fund: '基金',
+  bond: '债券',
+  futures: '期货',
+  option: '期权',
+  other: '其他',
+};
+
+export function getSearchTypeLabel(item: Pick<SDKSearchResult, 'type' | 'category'>): string {
+  return SEARCH_CATEGORY_LABELS[item.category ?? ''] ?? item.type;
+}
+
+/**
+ * 统一的搜索实体路由解析：搜索结果与历史记录共用，避免两处映射漂移。
+ * '行业板块'/'概念板块' 分支仅为兼容旧版本存下的搜索历史（SDK v2 搜索不再返回板块实体）。
+ */
+export function resolveSearchRoute(item: {
+  code: string;
+  market?: string;
+  type?: string;
+}): { entityType: SearchEntityType; route: string | null } {
+  if (item.type === '行业板块') {
+    return { entityType: 'industry', route: `/boards/industry/${item.code}` };
+  }
+  if (item.type === '概念板块') {
+    return { entityType: 'concept', route: `/boards/concept/${item.code}` };
+  }
+
+  const normalizedCode = normalizeStockCode(item.code);
+  if (
+    item.market &&
+    ['sh', 'sz', 'bj'].includes(item.market.toLowerCase()) &&
+    /^(sh|sz|bj)\d{6}$/i.test(normalizedCode)
+  ) {
+    return { entityType: 'stock', route: `/s/${normalizedCode}` };
+  }
+
+  return { entityType: 'unsupported', route: null };
 }
 
 // SDK 单例
@@ -64,37 +107,22 @@ const DEFAULT_TTL = {
 };
 
 function normalizeSearchResult(item: SDKSearchResult): AppSearchResult {
-  const normalizedCode = normalizeStockCode(item.code);
-  const normalizedType = item.type.trim();
+  const typeLabel = getSearchTypeLabel(item);
+  // 详情页只接入了 A 股股票/指数；基金、债券等 category 一律标记不支持
+  const categorySupported =
+    item.category === undefined || ['stock', 'index'].includes(item.category);
+  const { entityType, route } = categorySupported
+    ? resolveSearchRoute(item)
+    : { entityType: 'unsupported' as const, route: null };
 
-  if (normalizedType === '行业板块') {
+  if (entityType === 'stock' && route) {
     return {
       ...item,
-      entityType: 'industry',
+      code: normalizeStockCode(item.code),
+      entityType,
       isSupported: true,
-      route: `/boards/industry/${item.code}`,
-    };
-  }
-
-  if (normalizedType === '概念板块') {
-    return {
-      ...item,
-      entityType: 'concept',
-      isSupported: true,
-      route: `/boards/concept/${item.code}`,
-    };
-  }
-
-  if (
-    ['sh', 'sz', 'bj'].includes(item.market.toLowerCase()) &&
-    /^(sh|sz|bj)\d{6}$/i.test(normalizedCode)
-  ) {
-    return {
-      ...item,
-      code: normalizedCode,
-      entityType: 'stock',
-      isSupported: true,
-      route: `/s/${normalizedCode}`,
+      route,
+      typeLabel,
     };
   }
 
@@ -103,6 +131,7 @@ function normalizeSearchResult(item: SDKSearchResult): AppSearchResult {
     entityType: 'unsupported',
     isSupported: false,
     route: null,
+    typeLabel,
   };
 }
 

@@ -2,7 +2,7 @@
  * 自选管理页
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -165,8 +165,10 @@ export function Watchlist() {
   const [showColumnPanel, setShowColumnPanel] = useState(false);
   const [showAlertPanel, setShowAlertPanel] = useState(false);
 
-  // 拖拽
+  // 拖拽：dragover 只改本地预览，drop 才持久化——Esc 取消的拖拽不能落库
   const [draggedCode, setDraggedCode] = useState<string | null>(null);
+  const [dragPreviewCodes, setDragPreviewCodes] = useState<string[] | null>(null);
+  const [quotesError, setQuotesError] = useState(false);
 
   // 当前分组
   const activeGroup = groups.find((g) => g.id === activeGroupId);
@@ -222,6 +224,7 @@ export function Watchlist() {
       });
 
       setQuotes(map);
+      setQuotesError(false);
 
       const now = Date.now();
       const triggered: AlertRule[] = [];
@@ -257,15 +260,26 @@ export function Watchlist() {
       }
     } catch (error) {
       console.error('Fetch quotes error:', error);
+      setQuotesError(true);
     }
   }, [normalizedActiveCodes, toast]);
 
   // 轮询（优化：从 5s 改为 10s，减少 API 请求）
-  usePolling(fetchQuotes, {
+  const { refresh: refreshQuotes } = usePolling(fetchQuotes, {
     interval: getRefreshInterval('list'),
     enabled: normalizedActiveCodes.length > 0,
     immediate: true,
   });
+
+  // 非空组之间切换不触发轮询 effect（enabled 不变），需主动刷新，否则表格空白到下个 tick
+  const groupSwitchInitRef = useRef(false);
+  useEffect(() => {
+    if (!groupSwitchInitRef.current) {
+      groupSwitchInitRef.current = true;
+      return;
+    }
+    refreshQuotes();
+  }, [activeGroupId, refreshQuotes]);
 
   // 创建分组
   const handleCreateGroup = () => {
@@ -421,29 +435,38 @@ export function Watchlist() {
   // 拖拽排序处理
   const handleDragStart = useCallback((code: string) => {
     setDraggedCode(code);
-  }, []);
+    setDragPreviewCodes(normalizedActiveCodes);
+  }, [normalizedActiveCodes]);
 
   const handleDragOver = useCallback((e: React.DragEvent, targetCode: string) => {
     e.preventDefault();
     if (!draggedCode || draggedCode === targetCode) return;
-    
-    const currentCodes = [...normalizedActiveCodes];
-    const dragIndex = currentCodes.indexOf(draggedCode);
-    const targetIndex = currentCodes.indexOf(targetCode);
-    
-    if (dragIndex === -1 || targetIndex === -1) return;
-    
-    // 移动元素
-    currentCodes.splice(dragIndex, 1);
-    currentCodes.splice(targetIndex, 0, draggedCode);
-    
-    // 更新顺序
-    reorderWatchlist(activeGroupId, currentCodes);
-    setGroups(getWatchlistGroups());
-  }, [draggedCode, normalizedActiveCodes, activeGroupId]);
 
+    setDragPreviewCodes((prev) => {
+      const currentCodes = [...(prev ?? normalizedActiveCodes)];
+      const dragIndex = currentCodes.indexOf(draggedCode);
+      const targetIndex = currentCodes.indexOf(targetCode);
+      if (dragIndex === -1 || targetIndex === -1) return prev;
+
+      currentCodes.splice(dragIndex, 1);
+      currentCodes.splice(targetIndex, 0, draggedCode);
+      return currentCodes;
+    });
+  }, [draggedCode, normalizedActiveCodes]);
+
+  const handleDrop = useCallback(() => {
+    if (dragPreviewCodes) {
+      reorderWatchlist(activeGroupId, dragPreviewCodes);
+      setGroups(getWatchlistGroups());
+    }
+    setDraggedCode(null);
+    setDragPreviewCodes(null);
+  }, [dragPreviewCodes, activeGroupId]);
+
+  // dragend 在 drop 之后触发；未 drop（Esc/拖出去）则丢弃预览，持久化顺序不变
   const handleDragEnd = useCallback(() => {
     setDraggedCode(null);
+    setDragPreviewCodes(null);
   }, []);
 
   const handleToggleColumn = useCallback((columnKey: string) => {
@@ -458,7 +481,8 @@ export function Watchlist() {
 
   // 排序后的股票列表
   const sortedStocks = useMemo(() => {
-    const stockList = normalizedActiveCodes
+    const orderedCodes = dragPreviewCodes ?? normalizedActiveCodes;
+    const stockList = orderedCodes
       .map((code) => {
         return quotes.get(code) || quotes.get(code.toLowerCase());
       })
@@ -473,7 +497,7 @@ export function Watchlist() {
       const bVal = b[sortField] ?? 0;
       return sortOrder === 'desc' ? (bVal as number) - (aVal as number) : (aVal as number) - (bVal as number);
     });
-  }, [normalizedActiveCodes, quotes, sortField, sortOrder]);
+  }, [dragPreviewCodes, normalizedActiveCodes, quotes, sortField, sortOrder]);
 
   return (
     <div className={styles.watchlist}>
@@ -611,7 +635,11 @@ export function Watchlist() {
           }
         >
           {!isEmptyGroup && quotes.size === 0 ? (
-            <Loading text="加载中..." />
+            quotesError ? (
+              <Empty title="行情加载失败" description="网络异常，将按刷新间隔自动重试" />
+            ) : (
+              <Loading text="加载中..." />
+            )
           ) : activeCodes.length === 0 ? (
             <Empty
               title="暂无自选股"
@@ -738,6 +766,7 @@ export function Watchlist() {
                           draggable={sortField === 'default' && !showSelectMode}
                           onDragStart={() => handleDragStart(quote.code)}
                           onDragOver={(e) => handleDragOver(e, quote.code)}
+                          onDrop={handleDrop}
                           onDragEnd={handleDragEnd}
                         >
                           {showSelectMode && (

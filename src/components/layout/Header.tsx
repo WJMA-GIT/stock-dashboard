@@ -20,7 +20,7 @@ import {
   Github,
   Database,
 } from 'lucide-react';
-import { search as searchApi } from '@/services/sdk';
+import { search as searchApi, resolveSearchRoute } from '@/services/sdk';
 import {
   getSearchHistory,
   addSearchHistory,
@@ -32,26 +32,10 @@ import { useToast } from '@/components/common';
 import { useTheme } from '@/hooks';
 import type { SearchHistoryItem } from '@/types';
 import type { AppSearchResult } from '@/services/sdk';
-import { normalizeStockCode } from '@/utils/format';
 import styles from './Header.module.css';
 
 function getHistoryRoute(item: SearchHistoryItem): string | null {
-  if (item.type === '行业板块') {
-    return `/boards/industry/${item.code}`;
-  }
-  if (item.type === '概念板块') {
-    return `/boards/concept/${item.code}`;
-  }
-
-  const normalizedCode = normalizeStockCode(item.code);
-  if (
-    ['sh', 'sz', 'bj'].includes(item.market.toLowerCase()) &&
-    /^(sh|sz|bj)\d{6}$/i.test(normalizedCode)
-  ) {
-    return `/s/${normalizedCode}`;
-  }
-
-  return null;
+  return resolveSearchRoute(item).route;
 }
 
 export function Header() {
@@ -304,7 +288,7 @@ export function Header() {
                       <span className={styles.itemName}>{item.name}</span>
                       <span className={styles.itemCode}>{item.code}</span>
                       <span className={styles.itemType}>
-                        {item.isSupported ? item.type : '暂不支持'}
+                        {item.isSupported ? item.typeLabel : '暂不支持'}
                       </span>
                       {/* 股票类型显示快速加自选按钮 */}
                       {item.entityType === 'stock' && item.isSupported && (

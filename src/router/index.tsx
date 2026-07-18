@@ -4,9 +4,11 @@
 
 import { Suspense, lazy, type ReactNode } from 'react';
 import { createBrowserRouter, RouterProvider, useParams } from 'react-router-dom';
+import { withFaroRouterInstrumentation } from '@grafana/faro-react';
 import { Layout } from '@/components/layout';
 import { Dashboard } from '@/pages/Dashboard';
 import { Loading } from '@/components/common';
+import { NotFound, RouteErrorFallback } from '@/pages/NotFound';
 
 const Heatmap = lazy(() => import('@/pages/Heatmap').then((mod) => ({ default: mod.Heatmap })));
 const Rankings = lazy(() => import('@/pages/Rankings').then((mod) => ({ default: mod.Rankings })));
@@ -43,11 +45,12 @@ function BoardDetailRoute() {
   return <BoardDetail key={`${type}/${code}`} />;
 }
 
-const router = createBrowserRouter(
+const browserRouter = createBrowserRouter(
   [
     {
       path: '/',
       element: <Layout />,
+      errorElement: <RouteErrorFallback />,
       children: [
         {
           index: true,
@@ -89,11 +92,20 @@ const router = createBrowserRouter(
           path: 's/:code',
           element: withSuspense(<StockDetailRoute />),
         },
+        {
+          path: '*',
+          element: <NotFound />,
+        },
       ],
     },
   ],
   { basename: import.meta.env.BASE_URL }
 );
+
+// Faro 的 data-router 路由遥测必须包裹 router 实例才生效（要求 initializeFaro 已先执行，见 main.tsx 的加载顺序）
+const router = import.meta.env.PROD
+  ? withFaroRouterInstrumentation(browserRouter)
+  : browserRouter;
 
 export function AppRouter() {
   return <RouterProvider router={router} />;

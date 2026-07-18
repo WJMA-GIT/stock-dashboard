@@ -22,6 +22,7 @@ import {
 } from '@/services/storage';
 import {
   getAllAShareQuotes,
+  getAllQuotesByCodes,
   getConceptConstituents,
   getIndustryConstituents,
   getStockChanges,
@@ -198,15 +199,29 @@ export function Scanner() {
     });
   }, [boardLimit, boardType, selectedBoardCode, toast]);
 
-  const resolveWatchlistPool = useCallback((): ScannerStockPoolItem[] => {
-    return getAllWatchlistCodes().map((code) => {
-      const routeCode = normalizeStockCode(code);
-      return {
-        code: parseStockCode(routeCode).symbol || routeCode,
-        routeCode,
-        name: parseStockCode(routeCode).symbol || routeCode,
-      };
-    });
+  const resolveWatchlistPool = useCallback(async (): Promise<ScannerStockPoolItem[]> => {
+    const routeCodes = getAllWatchlistCodes()
+      .map((code) => normalizeStockCode(code))
+      .filter(Boolean);
+
+    // 自选池只有代码没有名称，批量拉一次行情回填，否则结果表名称列显示代码
+    const nameByCode = new Map<string, string>();
+    try {
+      const quotes = await getAllQuotesByCodes(routeCodes);
+      quotes.forEach((quote) => {
+        if (quote?.code && quote.name) {
+          nameByCode.set(normalizeStockCode(quote.code), quote.name);
+        }
+      });
+    } catch (error) {
+      console.error('Fetch watchlist names error:', error);
+    }
+
+    return routeCodes.map((routeCode) => ({
+      code: parseStockCode(routeCode).symbol || routeCode,
+      routeCode,
+      name: nameByCode.get(routeCode) || parseStockCode(routeCode).symbol || routeCode,
+    }));
   }, []);
 
   const resolveZTPoolSource = useCallback(async (): Promise<ScannerStockPoolItem[]> => {

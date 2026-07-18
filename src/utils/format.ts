@@ -263,7 +263,11 @@ export function parseStockCode(code: string): { market: string; symbol: string }
     if (trimmed.startsWith('0') || trimmed.startsWith('3')) {
       return { market: 'sz', symbol: trimmed };
     }
-    if (trimmed.startsWith('4') || trimmed.startsWith('8')) {
+    if (
+      trimmed.startsWith('4') ||
+      trimmed.startsWith('8') ||
+      trimmed.startsWith('92')
+    ) {
       return { market: 'bj', symbol: trimmed };
     }
   }
