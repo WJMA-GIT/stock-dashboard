@@ -33,10 +33,20 @@ if (import.meta.env.PROD) {
   });
 }
 
-import('./App').then(({ App }) => {
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <App />
-    </StrictMode>
-  );
-});
+import('./App')
+  .then(({ App }) => {
+    createRoot(document.getElementById('root')!).render(
+      <StrictMode>
+        <App />
+      </StrictMode>
+    );
+  })
+  .catch((error) => {
+    // App 现在是独立 chunk，加载失败不能静默白屏
+    console.error('Failed to load app:', error);
+    const root = document.getElementById('root');
+    if (root) {
+      root.innerHTML =
+        '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:12px;font-family:system-ui;color:#71717a"><p>页面加载失败，请检查网络后重试</p><button onclick="location.reload()" style="padding:6px 16px;font-size:13px;cursor:pointer">重新加载</button></div>';
+    }
+  });

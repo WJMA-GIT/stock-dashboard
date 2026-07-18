@@ -1,6 +1,9 @@
 # Local docs (not committed)
 localdocs/
 
+# Local agent/editor workspace config
+.claude/
+
 # Logs
 logs
 *.log

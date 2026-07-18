@@ -204,6 +204,8 @@ export function Scanner() {
       .map((code) => normalizeStockCode(code))
       .filter(Boolean);
 
+    if (routeCodes.length === 0) return [];
+
     // 自选池只有代码没有名称，批量拉一次行情回填，否则结果表名称列显示代码
     const nameByCode = new Map<string, string>();
     try {
