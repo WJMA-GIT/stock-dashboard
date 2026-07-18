@@ -7,5 +7,6 @@ export { Button } from './Button';
 export { Loading, Skeleton, Empty } from './Loading';
 export { Tabs } from './Tabs';
 export { ToastProvider } from './Toast';
+export { ErrorBoundary } from './ErrorBoundary';
 export { useToast } from './useToast';
 export { Logo } from './Logo';

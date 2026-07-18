@@ -52,26 +52,63 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
 };
 
-// 默认自选分组
-const DEFAULT_WATCHLIST_GROUPS: WatchlistGroup[] = [
-  {
-    id: 'default',
-    name: '默认分组',
-    codes: [],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-];
+// 每次调用返回全新对象：fallback 若共享引用，调用方的原地 mutation 会污染后续 fallback
+function createDefaultWatchlistGroups(): WatchlistGroup[] {
+  const now = Date.now();
+  return [
+    {
+      id: 'default',
+      name: '默认分组',
+      codes: [],
+      createdAt: now,
+      updatedAt: now,
+    },
+  ];
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isWatchlistGroupArray(value: unknown): value is WatchlistGroup[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (g) =>
+        isPlainObject(g) &&
+        typeof g.id === 'string' &&
+        Array.isArray(g.codes) &&
+        (g.codes as unknown[]).every((c) => typeof c === 'string')
+    )
+  );
+}
 
 /**
- * 安全读取 JSON
+ * 安全读取 JSON；validator 校验形状，不通过一律回退 fallback（防旧版本/手改脏数据打崩渲染）
  */
-function safeJsonParse<T>(value: string | null, fallback: T): T {
+function safeJsonParse<T>(
+  value: string | null,
+  fallback: T,
+  isValid?: (parsed: unknown) => boolean
+): T {
   if (!value) return fallback;
   try {
-    return JSON.parse(value) as T;
+    const parsed: unknown = JSON.parse(value);
+    if (parsed === null || parsed === undefined) return fallback;
+    if (isValid && !isValid(parsed)) return fallback;
+    return parsed as T;
   } catch {
     return fallback;
+  }
+}
+
+function safeSetItem(key: string, value: unknown): boolean {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    console.warn(`localStorage write failed: ${key}`, error);
+    return false;
   }
 }
 
@@ -82,7 +119,7 @@ function safeJsonParse<T>(value: string | null, fallback: T): T {
  */
 export function getWatchlistGroups(): WatchlistGroup[] {
   const data = localStorage.getItem(STORAGE_KEYS.WATCHLIST_GROUPS);
-  const groups = safeJsonParse(data, DEFAULT_WATCHLIST_GROUPS);
+  const groups = safeJsonParse(data, createDefaultWatchlistGroups(), isWatchlistGroupArray);
   let changed = false;
 
   const normalizedGroups = groups.map((group) => {
@@ -126,7 +163,7 @@ export function getWatchlistGroups(): WatchlistGroup[] {
  * 保存自选分组
  */
 export function saveWatchlistGroups(groups: WatchlistGroup[]): void {
-  localStorage.setItem(STORAGE_KEYS.WATCHLIST_GROUPS, JSON.stringify(groups));
+  safeSetItem(STORAGE_KEYS.WATCHLIST_GROUPS, groups);
 }
 
 /**
@@ -287,14 +324,14 @@ export function reorderWatchlist(groupId: string, codes: string[]): void {
  */
 export function getAlertRules(): AlertRule[] {
   const data = localStorage.getItem(STORAGE_KEYS.ALERTS);
-  return safeJsonParse(data, []);
+  return safeJsonParse<AlertRule[]>(data, [], Array.isArray);
 }
 
 /**
  * 保存告警规则
  */
 export function saveAlertRules(rules: AlertRule[]): void {
-  localStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(rules));
+  safeSetItem(STORAGE_KEYS.ALERTS, rules);
 }
 
 /**
@@ -348,13 +385,15 @@ export function getSettings(): AppSettings {
   const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
   const legacyHeatmapConfig = safeJsonParse(
     localStorage.getItem(STORAGE_KEYS.HEATMAP_CONFIG),
-    DEFAULT_SETTINGS.heatmapConfig
+    DEFAULT_SETTINGS.heatmapConfig,
+    isPlainObject
   );
   const legacyIndicatorConfig = safeJsonParse(
     localStorage.getItem(STORAGE_KEYS.INDICATOR_CONFIG),
-    DEFAULT_SETTINGS.indicatorConfig
+    DEFAULT_SETTINGS.indicatorConfig,
+    isPlainObject
   );
-  const parsed = safeJsonParse<Partial<AppSettings>>(data, {});
+  const parsed = safeJsonParse<Partial<AppSettings>>(data, {}, isPlainObject);
 
   return {
     ...DEFAULT_SETTINGS,
@@ -410,15 +449,9 @@ export function getSettings(): AppSettings {
  * 保存应用设置
  */
 export function saveSettings(settings: AppSettings): void {
-  localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-  localStorage.setItem(
-    STORAGE_KEYS.HEATMAP_CONFIG,
-    JSON.stringify(settings.heatmapConfig)
-  );
-  localStorage.setItem(
-    STORAGE_KEYS.INDICATOR_CONFIG,
-    JSON.stringify(settings.indicatorConfig)
-  );
+  safeSetItem(STORAGE_KEYS.SETTINGS, settings);
+  safeSetItem(STORAGE_KEYS.HEATMAP_CONFIG, settings.heatmapConfig);
+  safeSetItem(STORAGE_KEYS.INDICATOR_CONFIG, settings.indicatorConfig);
 }
 
 /**
@@ -477,8 +510,9 @@ export function saveIndicatorConfig(config: IndicatorConfig): void {
  */
 export function getTableColumns(pageKey: string): ColumnConfig[] | null {
   const data = localStorage.getItem(STORAGE_KEYS.TABLE_COLUMNS);
-  const allConfigs = safeJsonParse<Record<string, ColumnConfig[]>>(data, {});
-  return allConfigs[pageKey] || null;
+  const allConfigs = safeJsonParse<Record<string, ColumnConfig[]>>(data, {}, isPlainObject);
+  const columns = allConfigs[pageKey];
+  return Array.isArray(columns) ? columns : null;
 }
 
 /**
@@ -486,9 +520,9 @@ export function getTableColumns(pageKey: string): ColumnConfig[] | null {
  */
 export function saveTableColumns(pageKey: string, columns: ColumnConfig[]): void {
   const data = localStorage.getItem(STORAGE_KEYS.TABLE_COLUMNS);
-  const allConfigs = safeJsonParse<Record<string, ColumnConfig[]>>(data, {});
+  const allConfigs = safeJsonParse<Record<string, ColumnConfig[]>>(data, {}, isPlainObject);
   allConfigs[pageKey] = columns;
-  localStorage.setItem(STORAGE_KEYS.TABLE_COLUMNS, JSON.stringify(allConfigs));
+  safeSetItem(STORAGE_KEYS.TABLE_COLUMNS, allConfigs);
 }
 
 // ========== 搜索历史 ==========
@@ -500,7 +534,7 @@ const MAX_SEARCH_HISTORY = 20;
  */
 export function getSearchHistory(): SearchHistoryItem[] {
   const data = localStorage.getItem(STORAGE_KEYS.SEARCH_HISTORY);
-  return safeJsonParse(data, []);
+  return safeJsonParse<SearchHistoryItem[]>(data, [], Array.isArray);
 }
 
 /**
@@ -516,7 +550,7 @@ export function addSearchHistory(item: Omit<SearchHistoryItem, 'timestamp'>): vo
   if (history.length > MAX_SEARCH_HISTORY) {
     history = history.slice(0, MAX_SEARCH_HISTORY);
   }
-  localStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(history));
+  safeSetItem(STORAGE_KEYS.SEARCH_HISTORY, history);
 }
 
 /**

@@ -2,19 +2,25 @@
  * 应用主布局
  */
 
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { ErrorBoundary } from '@/components/common';
 import styles from './Layout.module.css';
 
 export function Layout() {
+  const location = useLocation();
+
   return (
     <div className={styles.layout}>
       <Sidebar />
       <Header />
       <main className={styles.main}>
         <div className={styles.content}>
-          <Outlet />
+          {/* key 按路径复位：某页渲染崩溃后导航到其他页可自动恢复 */}
+          <ErrorBoundary key={location.pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </div>
         <footer className={styles.footer}>
           <span>数据来源：</span>
