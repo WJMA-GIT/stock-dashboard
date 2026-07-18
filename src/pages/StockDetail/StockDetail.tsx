@@ -23,9 +23,10 @@ import type {
   TodayTimelineResponse,
 } from 'stock-sdk';
 import { LazyEChart } from '@/components/charts/LazyEChart';
+import { getChartColors, type ChartColors } from '@/components/charts/chartTheme';
 import { Button, Card, Loading, Tabs, useToast } from '@/components/common';
 import { useAppSettings } from '@/contexts';
-import { usePolling } from '@/hooks';
+import { usePolling, useTheme } from '@/hooks';
 import {
   getDividendDetail,
   getFullQuotes,
@@ -147,8 +148,9 @@ function buildTimelineOption(args: {
   timeline: TodayTimelineResponse | null;
   minuteKline: MinuteKlineItem[];
   prevClose: number | undefined;
+  colors: ChartColors;
 }) {
-  const { minutePeriod, timeline, minuteKline, prevClose } = args;
+  const { minutePeriod, timeline, minuteKline, prevClose, colors } = args;
 
   if (minutePeriod === '1') {
     if (!timeline?.data?.length) {
@@ -169,8 +171,8 @@ function buildTimelineOption(args: {
       xAxis: {
         type: 'category',
         data: times,
-        axisLine: { lineStyle: { color: '#30363d' } },
-        axisLabel: { color: '#6e7681', fontSize: 10 },
+        axisLine: { lineStyle: { color: colors.borderPrimary } },
+        axisLabel: { color: colors.textTertiary, fontSize: 10 },
       },
       yAxis: {
         type: 'value',
@@ -178,11 +180,11 @@ function buildTimelineOption(args: {
         max: basePrice + range,
         axisLine: { show: false },
         axisLabel: {
-          color: '#6e7681',
+          color: colors.textTertiary,
           fontSize: 10,
           formatter: (value: number) => value.toFixed(2),
         },
-        splitLine: { lineStyle: { color: '#21262d', type: 'dashed' } },
+        splitLine: { lineStyle: { color: colors.borderSecondary, type: 'dashed' } },
       },
       series: [
         {
@@ -215,9 +217,9 @@ function buildTimelineOption(args: {
       ],
       tooltip: {
         trigger: 'axis',
-        backgroundColor: '#1c2128',
-        borderColor: '#30363d',
-        textStyle: { color: '#e6edf3', fontSize: 12 },
+        backgroundColor: colors.bgElevated,
+        borderColor: colors.borderPrimary,
+        textStyle: { color: colors.textPrimary, fontSize: 12 },
       },
     };
   }
@@ -235,19 +237,19 @@ function buildTimelineOption(args: {
     xAxis: {
       type: 'category',
       data: times,
-      axisLine: { lineStyle: { color: '#30363d' } },
-      axisLabel: { color: '#6e7681', fontSize: 10 },
+      axisLine: { lineStyle: { color: colors.borderPrimary } },
+      axisLabel: { color: colors.textTertiary, fontSize: 10 },
     },
     yAxis: {
       type: 'value',
       scale: true,
       axisLine: { show: false },
       axisLabel: {
-        color: '#6e7681',
+        color: colors.textTertiary,
         fontSize: 10,
         formatter: (value: number) => value.toFixed(2),
       },
-      splitLine: { lineStyle: { color: '#21262d', type: 'dashed' } },
+      splitLine: { lineStyle: { color: colors.borderSecondary, type: 'dashed' } },
     },
     series: [
       {
@@ -255,18 +257,18 @@ function buildTimelineOption(args: {
         type: 'candlestick',
         data: ohlc,
         itemStyle: {
-          color: '#ef4444',
-          color0: '#22c55e',
-          borderColor: '#ef4444',
-          borderColor0: '#22c55e',
+          color: colors.rise,
+          color0: colors.fall,
+          borderColor: colors.rise,
+          borderColor0: colors.fall,
         },
       },
     ],
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#1c2128',
-      borderColor: '#30363d',
-      textStyle: { color: '#e6edf3', fontSize: 12 },
+      backgroundColor: colors.bgElevated,
+      borderColor: colors.borderPrimary,
+      textStyle: { color: colors.textPrimary, fontSize: 12 },
     },
   };
 }
@@ -276,8 +278,9 @@ function buildKlineOption(args: {
   overlays: OverlayIndicatorKey[];
   oscillator: OscillatorIndicatorKey;
   indicatorConfig: IndicatorConfig;
+  colors: ChartColors;
 }) {
-  const { data, overlays, oscillator, indicatorConfig } = args;
+  const { data, overlays, oscillator, indicatorConfig, colors } = args;
 
   if (!data.length) {
     return {};
@@ -293,7 +296,7 @@ function buildKlineOption(args: {
   const volumes = data.map((item) => ({
     value: item.volume ?? 0,
     itemStyle: {
-      color: (item.close ?? 0) >= (item.open ?? 0) ? '#ef4444' : '#22c55e',
+      color: (item.close ?? 0) >= (item.open ?? 0) ? colors.rise : colors.fall,
     },
   }));
 
@@ -306,10 +309,10 @@ function buildKlineOption(args: {
       type: 'candlestick',
       data: ohlc,
       itemStyle: {
-        color: '#ef4444',
-        color0: '#22c55e',
-        borderColor: '#ef4444',
-        borderColor0: '#22c55e',
+        color: colors.rise,
+        color0: colors.fall,
+        borderColor: colors.rise,
+        borderColor0: colors.fall,
       },
     },
     {
@@ -473,7 +476,7 @@ function buildKlineOption(args: {
           yAxisIndex: 2,
           data: data.map((item) => item.roc?.roc ?? null),
           symbol: 'none',
-          lineStyle: { width: 1, color: '#22c55e' },
+          lineStyle: { width: 1, color: colors.fall },
         },
         {
           name: 'ROC Signal',
@@ -495,7 +498,7 @@ function buildKlineOption(args: {
           yAxisIndex: 2,
           data: data.map((item) => item.dmi?.pdi ?? null),
           symbol: 'none',
-          lineStyle: { width: 1, color: '#22c55e' },
+          lineStyle: { width: 1, color: colors.fall },
         },
         {
           name: '-DI',
@@ -504,7 +507,7 @@ function buildKlineOption(args: {
           yAxisIndex: 2,
           data: data.map((item) => item.dmi?.mdi ?? null),
           symbol: 'none',
-          lineStyle: { width: 1, color: '#ef4444' },
+          lineStyle: { width: 1, color: colors.rise },
         },
         {
           name: 'ADX',
@@ -527,7 +530,7 @@ function buildKlineOption(args: {
           yAxisIndex: 2,
           data: data.map((item) => ({
             value: item.macd?.macd ?? 0,
-            itemStyle: { color: (item.macd?.macd ?? 0) >= 0 ? '#ef4444' : '#22c55e' },
+            itemStyle: { color: (item.macd?.macd ?? 0) >= 0 ? colors.rise : colors.fall },
           })),
         },
         {
@@ -582,7 +585,7 @@ function buildKlineOption(args: {
         top: 10,
         style: {
           text: oscillatorSummary,
-          fill: '#8b949e',
+          fill: colors.textTertiary,
           fontSize: 11,
         },
       },
@@ -591,22 +594,22 @@ function buildKlineOption(args: {
       {
         type: 'category',
         data: dates,
-        axisLine: { lineStyle: { color: '#30363d' } },
+        axisLine: { lineStyle: { color: colors.borderPrimary } },
         axisLabel: { show: false },
       },
       {
         type: 'category',
         gridIndex: 1,
         data: dates,
-        axisLine: { lineStyle: { color: '#30363d' } },
+        axisLine: { lineStyle: { color: colors.borderPrimary } },
         axisLabel: { show: false },
       },
       {
         type: 'category',
         gridIndex: 2,
         data: dates,
-        axisLine: { lineStyle: { color: '#30363d' } },
-        axisLabel: { color: '#6e7681', fontSize: 10 },
+        axisLine: { lineStyle: { color: colors.borderPrimary } },
+        axisLabel: { color: colors.textTertiary, fontSize: 10 },
       },
     ],
     yAxis: [
@@ -614,8 +617,8 @@ function buildKlineOption(args: {
         type: 'value',
         scale: true,
         axisLine: { show: false },
-        axisLabel: { color: '#6e7681', fontSize: 10 },
-        splitLine: { lineStyle: { color: '#21262d', type: 'dashed' } },
+        axisLabel: { color: colors.textTertiary, fontSize: 10 },
+        splitLine: { lineStyle: { color: colors.borderSecondary, type: 'dashed' } },
       },
       {
         type: 'value',
@@ -628,16 +631,16 @@ function buildKlineOption(args: {
         type: 'value',
         gridIndex: 2,
         axisLine: { show: false },
-        axisLabel: { color: '#6e7681', fontSize: 9 },
+        axisLabel: { color: colors.textTertiary, fontSize: 9 },
         splitLine: { show: false },
       },
     ],
     series,
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#1c2128',
-      borderColor: '#30363d',
-      textStyle: { color: '#e6edf3', fontSize: 12 },
+      backgroundColor: colors.bgElevated,
+      borderColor: colors.borderPrimary,
+      textStyle: { color: colors.textPrimary, fontSize: 12 },
       formatter: (params: unknown[]) => {
         if (!Array.isArray(params) || params.length === 0) {
           return '';
@@ -707,8 +710,8 @@ function buildKlineOption(args: {
           <div>开: ${(item.open ?? 0).toFixed(2)} 收: ${(item.close ?? 0).toFixed(2)}</div>
           <div>高: ${(item.high ?? 0).toFixed(2)} 低: ${(item.low ?? 0).toFixed(2)}</div>
           <div>量: ${((item.volume ?? 0) / 10000).toFixed(2)}万手</div>
-          ${overlayTexts.length > 0 ? `<div style="margin-top:6px;border-top:1px solid #30363d;padding-top:6px;">${overlayTexts.join('<br/>')}</div>` : ''}
-          <div style="margin-top:6px;border-top:1px solid #30363d;padding-top:6px;">${oscillatorText}</div>
+          ${overlayTexts.length > 0 ? `<div style="margin-top:6px;border-top:1px solid ${colors.borderPrimary};padding-top:6px;">${overlayTexts.join('<br/>')}</div>` : ''}
+          <div style="margin-top:6px;border-top:1px solid ${colors.borderPrimary};padding-top:6px;">${oscillatorText}</div>
         `;
       },
     },
@@ -721,11 +724,11 @@ function buildKlineOption(args: {
         end: 100,
         bottom: 10,
         height: 20,
-        borderColor: '#30363d',
-        backgroundColor: '#21262d',
+        borderColor: colors.borderPrimary,
+        backgroundColor: colors.borderSecondary,
         fillerColor: 'rgba(88, 166, 255, 0.2)',
         handleStyle: { color: '#58a6ff' },
-        textStyle: { color: '#6e7681', fontSize: 10 },
+        textStyle: { color: colors.textTertiary, fontSize: 10 },
       },
     ],
   };
@@ -736,6 +739,11 @@ export function StockDetail() {
   const navigate = useNavigate();
   const toast = useToast();
   const { settings, getRefreshInterval } = useAppSettings();
+  const { theme } = useTheme();
+  const chartColors = useMemo(
+    () => getChartColors(theme, settings.colorMode),
+    [theme, settings.colorMode]
+  );
   const normalizedCode = normalizeStockCode(code || '');
 
   const [quote, setQuote] = useState<FullQuote | null>(null);
@@ -1051,8 +1059,9 @@ export function StockDetail() {
         timeline,
         minuteKline,
         prevClose: quote?.prevClose,
+        colors: chartColors,
       }),
-    [minuteKline, minutePeriod, quote?.prevClose, timeline]
+    [minuteKline, minutePeriod, quote?.prevClose, timeline, chartColors]
   );
 
   const klineChartOption = useMemo(
@@ -1062,8 +1071,9 @@ export function StockDetail() {
         overlays: selectedOverlays,
         oscillator: selectedOscillator,
         indicatorConfig: settings.indicatorConfig,
+        colors: chartColors,
       }),
-    [klineData, selectedOscillator, selectedOverlays, settings.indicatorConfig]
+    [klineData, selectedOscillator, selectedOverlays, settings.indicatorConfig, chartColors]
   );
 
   if (loading) {

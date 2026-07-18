@@ -17,7 +17,9 @@ import {
   getSectorFundFlowHistory,
 } from '@/services/sdk';
 import { addToWatchlist, isInWatchlist } from '@/services/storage';
-import { useBoardData } from '@/contexts';
+import { useBoardData, useAppSettings } from '@/contexts';
+import { useTheme } from '@/hooks';
+import { getChartColors } from '@/components/charts/chartTheme';
 import {
   formatPrice,
   formatPercent,
@@ -52,6 +54,12 @@ export function BoardDetail() {
   const navigate = useNavigate();
   const toast = useToast();
   const { industryList, conceptList, loading: boardLoading } = useBoardData();
+  const { theme } = useTheme();
+  const { settings } = useAppSettings();
+  const chartColors = useMemo(
+    () => getChartColors(theme, settings.colorMode),
+    [theme, settings.colorMode]
+  );
 
   // 数据状态
   const [constituents, setConstituents] = useState<(IndustryBoardConstituent | ConceptBoardConstituent)[]>([]);
@@ -145,15 +153,15 @@ export function BoardDetail() {
   const klineChartOption = useMemo(() => {
     if (!klineData.length) return {};
 
-    // 获取 CSS 变量值
-    const computedStyle = window.getComputedStyle(document.documentElement);
-    const riseColor = computedStyle.getPropertyValue('--color-rise').trim() || '#ef4444';
-    const fallColor = computedStyle.getPropertyValue('--color-fall').trim() || '#22c55e';
-    const borderPrimary = computedStyle.getPropertyValue('--border-primary').trim() || '#333';
-    const borderSecondary = computedStyle.getPropertyValue('--border-secondary').trim() || '#222';
-    const textTertiary = computedStyle.getPropertyValue('--text-tertiary').trim() || '#666';
-    const bgElevated = computedStyle.getPropertyValue('--bg-elevated').trim() || '#1a1a1a';
-    const textPrimary = computedStyle.getPropertyValue('--text-primary').trim() || '#fff';
+    const {
+      rise: riseColor,
+      fall: fallColor,
+      borderPrimary,
+      borderSecondary,
+      textTertiary,
+      bgElevated,
+      textPrimary,
+    } = chartColors;
 
     const dates = klineData.map((d) => d.date);
     const ohlc = klineData.map((d) => [d.open, d.close, d.low, d.high]);
@@ -202,21 +210,22 @@ export function BoardDetail() {
         { type: 'slider', start: 70, end: 100, height: 20, bottom: 0 },
       ],
     };
-  }, [klineData]);
+  }, [klineData, chartColors]);
 
   const latestFundFlow = fundFlowHistory.at(-1) ?? null;
 
   const fundFlowChartOption = useMemo(() => {
     if (!fundFlowHistory.length) return {};
 
-    const computedStyle = window.getComputedStyle(document.documentElement);
-    const riseColor = computedStyle.getPropertyValue('--color-rise').trim() || '#ef4444';
-    const fallColor = computedStyle.getPropertyValue('--color-fall').trim() || '#22c55e';
-    const borderPrimary = computedStyle.getPropertyValue('--border-primary').trim() || '#333';
-    const borderSecondary = computedStyle.getPropertyValue('--border-secondary').trim() || '#222';
-    const textTertiary = computedStyle.getPropertyValue('--text-tertiary').trim() || '#666';
-    const bgElevated = computedStyle.getPropertyValue('--bg-elevated').trim() || '#1a1a1a';
-    const textPrimary = computedStyle.getPropertyValue('--text-primary').trim() || '#fff';
+    const {
+      rise: riseColor,
+      fall: fallColor,
+      borderPrimary,
+      borderSecondary,
+      textTertiary,
+      bgElevated,
+      textPrimary,
+    } = chartColors;
 
     return {
       animation: false,
@@ -267,7 +276,7 @@ export function BoardDetail() {
           yAxisIndex: 1,
           data: fundFlowHistory.map((item) => item.mainNetInflowPercent),
           symbol: 'none',
-          lineStyle: { width: 1.5, color: '#58a6ff' },
+          lineStyle: { width: 1.5, color: chartColors.accent },
         },
       ],
       tooltip: {
@@ -277,7 +286,7 @@ export function BoardDetail() {
         textStyle: { color: textPrimary, fontSize: 12 },
       },
     };
-  }, [fundFlowHistory]);
+  }, [fundFlowHistory, chartColors]);
 
   // 跳转个股
   const handleStockClick = (stockCode: string) => {

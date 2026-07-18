@@ -127,9 +127,31 @@ export function Heatmap() {
   // 兼容旧逻辑的 loading 状态
   const loading = boardLoading;
 
+  // 板块数据没有 amount/volumeRatio 字段，选中会静默退化成全同色/同面积，按维度过滤掉
+  const isBoardDimension = config.dimension === 'industry' || config.dimension === 'concept';
+  const colorFieldOptions = isBoardDimension
+    ? COLOR_FIELD_OPTIONS.filter((option) => option.key !== 'volumeRatio')
+    : COLOR_FIELD_OPTIONS;
+  const sizeFieldOptions = isBoardDimension
+    ? SIZE_FIELD_OPTIONS.filter((option) => option.key !== 'amount')
+    : SIZE_FIELD_OPTIONS;
+  const effectiveColorField =
+    isBoardDimension && config.colorField === 'volumeRatio'
+      ? 'changePercent'
+      : config.colorField;
+  const effectiveSizeField =
+    isBoardDimension && config.sizeField === 'amount'
+      ? 'totalMarketCap'
+      : config.sizeField;
+
+  // tooltip 与瓦片同一套涨跌配色，跟随 colorMode
+  const isRiseRed = config.colorMode === 'red-rise';
+  const riseHex = isRiseRed ? '#ef4444' : '#22c55e';
+  const fallHex = isRiseRed ? '#22c55e' : '#ef4444';
+
   // 获取颜色值（根据 colorField 配置）
   const getColorValue = (item: { changePercent?: number | null; turnoverRate?: number | null; volumeRatio?: number | null }) => {
-    switch (config.colorField) {
+    switch (effectiveColorField) {
       case 'turnoverRate':
         return item.turnoverRate ?? 0;
       case 'volumeRatio':
@@ -142,7 +164,7 @@ export function Heatmap() {
 
   // 获取大小值（根据 sizeField 配置）
   const getSizeValue = (item: { totalMarketCap?: number | null; amount?: number | null }) => {
-    switch (config.sizeField) {
+    switch (effectiveSizeField) {
       case 'amount':
         return item.amount ?? 1;
       case 'totalMarketCap':
@@ -191,7 +213,7 @@ export function Heatmap() {
           leadingStock: item.leadingStock,
           leadingStockChangePercent: item.leadingStockChangePercent,
           itemStyle: {
-            color: getColor(colorValue, config.colorField),
+            color: getColor(colorValue, effectiveColorField),
           },
         };
       });
@@ -211,7 +233,7 @@ export function Heatmap() {
           leadingStock: item.leadingStock,
           leadingStockChangePercent: item.leadingStockChangePercent,
           itemStyle: {
-            color: getColor(colorValue, config.colorField),
+            color: getColor(colorValue, effectiveColorField),
           },
         };
       });
@@ -229,7 +251,7 @@ export function Heatmap() {
           amount: item.amount,
           turnoverRate: item.turnoverRate,
           itemStyle: {
-            color: getColor(colorValue, config.colorField),
+            color: getColor(colorValue, effectiveColorField),
           },
         };
       });
@@ -258,7 +280,7 @@ export function Heatmap() {
           
           if (data.changePercent !== undefined && data.changePercent !== null) {
             const changePercent = data.changePercent as number;
-            const color = changePercent > 0 ? '#ef4444' : changePercent < 0 ? '#22c55e' : '#8b949e';
+            const color = changePercent > 0 ? riseHex : changePercent < 0 ? fallHex : '#8b949e';
             content += `<div style="display:flex;justify-content:space-between;gap:16px;"><span style="color:#8b949e">涨跌幅</span><span style="color:${color};font-weight:500">${formatPercent(changePercent)}</span></div>`;
           }
           
@@ -268,12 +290,12 @@ export function Heatmap() {
           
           if (data.leadingStock) {
             const leadingChange = data.leadingStockChangePercent as number | null;
-            const leadingColor = leadingChange != null && leadingChange > 0 ? '#ef4444' : leadingChange != null && leadingChange < 0 ? '#22c55e' : '#8b949e';
+            const leadingColor = leadingChange != null && leadingChange > 0 ? riseHex : leadingChange != null && leadingChange < 0 ? fallHex : '#8b949e';
             content += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #30363d;"><span style="color:#6e7681;font-size:11px">领涨</span><div style="margin-top:2px;display:flex;justify-content:space-between;"><span>${data.leadingStock}</span><span style="color:${leadingColor}">${leadingChange != null ? formatPercent(leadingChange) : ''}</span></div></div>`;
           }
           
           if (data.riseCount !== undefined && data.riseCount !== null) {
-            content += `<div style="margin-top:6px;font-size:11px;color:#6e7681"><span style="color:#ef4444">${data.riseCount}↑</span> <span style="color:#22c55e">${data.fallCount ?? 0}↓</span></div>`;
+            content += `<div style="margin-top:6px;font-size:11px;color:#6e7681"><span style="color:${riseHex}">${data.riseCount}↑</span> <span style="color:${fallHex}">${data.fallCount ?? 0}↓</span></div>`;
           }
           
           if (data.price !== undefined && data.price !== null) {
@@ -349,7 +371,7 @@ export function Heatmap() {
         },
       ],
     };
-  }, [treemapData]);
+  }, [treemapData, riseHex, fallHex]);
 
   // 点击处理
   const handleChartClick = (params: { data?: { code?: string } }) => {
@@ -390,8 +412,8 @@ export function Heatmap() {
         <div className={styles.controlGroup}>
           <span className={styles.controlLabel}>颜色</span>
           <Tabs
-            items={COLOR_FIELD_OPTIONS}
-            activeKey={config.colorField}
+            items={colorFieldOptions}
+            activeKey={effectiveColorField}
             onChange={(key) => updateConfig({ colorField: key as HeatmapConfig['colorField'] })}
             size="sm"
           />
@@ -400,8 +422,8 @@ export function Heatmap() {
         <div className={styles.controlGroup}>
           <span className={styles.controlLabel}>面积</span>
           <Tabs
-            items={SIZE_FIELD_OPTIONS}
-            activeKey={config.sizeField}
+            items={sizeFieldOptions}
+            activeKey={effectiveSizeField}
             onChange={(key) => updateConfig({ sizeField: key as HeatmapConfig['sizeField'] })}
             size="sm"
           />

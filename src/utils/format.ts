@@ -38,8 +38,10 @@ export function formatPercent(
   if (value === null || value === undefined || isNaN(value)) {
     return '--';
   }
-  const sign = showSign && value > 0 ? '+' : '';
-  return `${sign}${value.toFixed(2)}%`;
+  // (-0.004).toFixed(2) === '-0.00'，微跌会显示成带负号的零
+  const fixed = value.toFixed(2) === '-0.00' ? '0.00' : value.toFixed(2);
+  const sign = showSign && value > 0 && fixed !== '0.00' ? '+' : '';
+  return `${sign}${fixed}%`;
 }
 
 /**
@@ -52,8 +54,9 @@ export function formatChange(
   if (value === null || value === undefined || isNaN(value)) {
     return '--';
   }
-  const sign = showSign && value > 0 ? '+' : '';
-  return `${sign}${value.toFixed(2)}`;
+  const fixed = value.toFixed(2) === '-0.00' ? '0.00' : value.toFixed(2);
+  const sign = showSign && value > 0 && fixed !== '0.00' ? '+' : '';
+  return `${sign}${fixed}`;
 }
 
 /**
