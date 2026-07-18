@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { RefreshCw, Palette, BarChart2, Info } from 'lucide-react';
-import { Card } from '@/components/common';
+import { Card, NumberField } from '@/components/common';
 import { useAppSettings } from '@/contexts';
 import styles from './Settings.module.css';
 
@@ -16,6 +16,30 @@ function parsePeriods(value: string, fallback: number[]) {
     .filter((item) => Number.isFinite(item) && item > 0);
 
   return periods.length > 0 ? periods : fallback;
+}
+
+function IndicatorNumberInput({
+  value,
+  min = 1,
+  step,
+  onChange,
+}: {
+  value: number;
+  min?: number;
+  step?: number | string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <NumberField
+      className={styles.numberInput}
+      value={value}
+      min={min}
+      step={step}
+      onCommit={(v) => {
+        if (v !== null) onChange(v);
+      }}
+    />
+  );
 }
 
 export function Settings() {
@@ -208,42 +232,27 @@ export function Settings() {
                 <span className={styles.settingDesc}>短 / 长 / 信号</span>
               </div>
               <div className={styles.inlineInputs}>
-                <input
-                  className={styles.numberInput}
-                  type="number"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.macd.short}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      macd: {
-                        ...settings.indicatorConfig.macd,
-                        short: Number(e.target.value) || 12,
-                      },
+                      macd: { ...settings.indicatorConfig.macd, short: v },
                     })
                   }
                 />
-                <input
-                  className={styles.numberInput}
-                  type="number"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.macd.long}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      macd: {
-                        ...settings.indicatorConfig.macd,
-                        long: Number(e.target.value) || 26,
-                      },
+                      macd: { ...settings.indicatorConfig.macd, long: v },
                     })
                   }
                 />
-                <input
-                  className={styles.numberInput}
-                  type="number"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.macd.signal}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      macd: {
-                        ...settings.indicatorConfig.macd,
-                        signal: Number(e.target.value) || 9,
-                      },
+                      macd: { ...settings.indicatorConfig.macd, signal: v },
                     })
                   }
                 />
@@ -256,30 +265,21 @@ export function Settings() {
                 <span className={styles.settingDesc}>周期 / 标准差</span>
               </div>
               <div className={styles.inlineInputs}>
-                <input
-                  className={styles.numberInput}
-                  type="number"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.boll.period}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      boll: {
-                        ...settings.indicatorConfig.boll,
-                        period: Number(e.target.value) || 20,
-                      },
+                      boll: { ...settings.indicatorConfig.boll, period: v },
                     })
                   }
                 />
-                <input
-                  className={styles.numberInput}
-                  type="number"
-                  step="0.1"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.boll.stdDev}
-                  onChange={(e) =>
+                  min={0.1}
+                  step="0.1"
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      boll: {
-                        ...settings.indicatorConfig.boll,
-                        stdDev: Number(e.target.value) || 2,
-                      },
+                      boll: { ...settings.indicatorConfig.boll, stdDev: v },
                     })
                   }
                 />
@@ -292,42 +292,27 @@ export function Settings() {
                 <span className={styles.settingDesc}>周期 / K / D</span>
               </div>
               <div className={styles.inlineInputs}>
-                <input
-                  className={styles.numberInput}
-                  type="number"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.kdj.period}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      kdj: {
-                        ...settings.indicatorConfig.kdj,
-                        period: Number(e.target.value) || 9,
-                      },
+                      kdj: { ...settings.indicatorConfig.kdj, period: v },
                     })
                   }
                 />
-                <input
-                  className={styles.numberInput}
-                  type="number"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.kdj.kPeriod}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      kdj: {
-                        ...settings.indicatorConfig.kdj,
-                        kPeriod: Number(e.target.value) || 3,
-                      },
+                      kdj: { ...settings.indicatorConfig.kdj, kPeriod: v },
                     })
                   }
                 />
-                <input
-                  className={styles.numberInput}
-                  type="number"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.kdj.dPeriod}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      kdj: {
-                        ...settings.indicatorConfig.kdj,
-                        dPeriod: Number(e.target.value) || 3,
-                      },
+                      kdj: { ...settings.indicatorConfig.kdj, dPeriod: v },
                     })
                   }
                 />
@@ -357,29 +342,19 @@ export function Settings() {
                 <span className={styles.settingDesc}>默认趋势强度参数</span>
               </div>
               <div className={styles.inlineInputs}>
-                <input
-                  className={styles.numberInput}
-                  type="number"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.dmi.period}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      dmi: {
-                        ...settings.indicatorConfig.dmi,
-                        period: Number(e.target.value) || 14,
-                      },
+                      dmi: { ...settings.indicatorConfig.dmi, period: v },
                     })
                   }
                 />
-                <input
-                  className={styles.numberInput}
-                  type="number"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.dmi.adxPeriod}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      dmi: {
-                        ...settings.indicatorConfig.dmi,
-                        adxPeriod: Number(e.target.value) || 14,
-                      },
+                      dmi: { ...settings.indicatorConfig.dmi, adxPeriod: v },
                     })
                   }
                 />
@@ -392,45 +367,33 @@ export function Settings() {
                 <span className={styles.settingDesc}>起始 / 增量 / 最大加速</span>
               </div>
               <div className={styles.inlineInputs}>
-                <input
-                  className={styles.numberInput}
-                  type="number"
-                  step="0.01"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.sar.afStart}
-                  onChange={(e) =>
+                  min={0.01}
+                  step="0.01"
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      sar: {
-                        ...settings.indicatorConfig.sar,
-                        afStart: Number(e.target.value) || 0.02,
-                      },
+                      sar: { ...settings.indicatorConfig.sar, afStart: v },
                     })
                   }
                 />
-                <input
-                  className={styles.numberInput}
-                  type="number"
-                  step="0.01"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.sar.afIncrement}
-                  onChange={(e) =>
+                  min={0.01}
+                  step="0.01"
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      sar: {
-                        ...settings.indicatorConfig.sar,
-                        afIncrement: Number(e.target.value) || 0.02,
-                      },
+                      sar: { ...settings.indicatorConfig.sar, afIncrement: v },
                     })
                   }
                 />
-                <input
-                  className={styles.numberInput}
-                  type="number"
-                  step="0.01"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.sar.afMax}
-                  onChange={(e) =>
+                  min={0.01}
+                  step="0.01"
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      sar: {
-                        ...settings.indicatorConfig.sar,
-                        afMax: Number(e.target.value) || 0.2,
-                      },
+                      sar: { ...settings.indicatorConfig.sar, afMax: v },
                     })
                   }
                 />
@@ -443,43 +406,29 @@ export function Settings() {
                 <span className={styles.settingDesc}>EMA / ATR / 倍数</span>
               </div>
               <div className={styles.inlineInputs}>
-                <input
-                  className={styles.numberInput}
-                  type="number"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.kc.emaPeriod}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      kc: {
-                        ...settings.indicatorConfig.kc,
-                        emaPeriod: Number(e.target.value) || 20,
-                      },
+                      kc: { ...settings.indicatorConfig.kc, emaPeriod: v },
                     })
                   }
                 />
-                <input
-                  className={styles.numberInput}
-                  type="number"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.kc.atrPeriod}
-                  onChange={(e) =>
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      kc: {
-                        ...settings.indicatorConfig.kc,
-                        atrPeriod: Number(e.target.value) || 10,
-                      },
+                      kc: { ...settings.indicatorConfig.kc, atrPeriod: v },
                     })
                   }
                 />
-                <input
-                  className={styles.numberInput}
-                  type="number"
-                  step="0.1"
+                <IndicatorNumberInput
                   value={settings.indicatorConfig.kc.multiplier}
-                  onChange={(e) =>
+                  min={0.1}
+                  step="0.1"
+                  onChange={(v) =>
                     updateIndicatorConfig({
-                      kc: {
-                        ...settings.indicatorConfig.kc,
-                        multiplier: Number(e.target.value) || 2,
-                      },
+                      kc: { ...settings.indicatorConfig.kc, multiplier: v },
                     })
                   }
                 />

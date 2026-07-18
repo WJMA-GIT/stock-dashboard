@@ -20,12 +20,13 @@ export interface TimelinePoint {
 
 export interface EndOfDayFilters {
   marketCapMin: number;
-  marketCapMax: number;
+  /** null = 不设上限 */
+  marketCapMax: number | null;
   volumeRatioMin: number;
   changePercentMin: number;
-  changePercentMax: number;
+  changePercentMax: number | null;
   turnoverRateMin: number;
-  turnoverRateMax: number;
+  turnoverRateMax: number | null;
   excludeST: boolean;
   timelineAboveAvgRatio: number;
 }
@@ -183,7 +184,7 @@ function filterBasicQuotes(quotes: FullQuote[], filters: EndOfDayFilters): EndOf
       if (
         marketCap === null ||
         marketCap < filters.marketCapMin ||
-        marketCap > filters.marketCapMax
+        (filters.marketCapMax !== null && marketCap > filters.marketCapMax)
       ) {
         return false;
       }
@@ -194,7 +195,7 @@ function filterBasicQuotes(quotes: FullQuote[], filters: EndOfDayFilters): EndOf
 
       if (
         changePercent < filters.changePercentMin ||
-        changePercent > filters.changePercentMax
+        (filters.changePercentMax !== null && changePercent > filters.changePercentMax)
       ) {
         return false;
       }
@@ -202,7 +203,7 @@ function filterBasicQuotes(quotes: FullQuote[], filters: EndOfDayFilters): EndOf
       if (
         turnoverRate === null ||
         turnoverRate < filters.turnoverRateMin ||
-        turnoverRate > filters.turnoverRateMax
+        (filters.turnoverRateMax !== null && turnoverRate > filters.turnoverRateMax)
       ) {
         return false;
       }

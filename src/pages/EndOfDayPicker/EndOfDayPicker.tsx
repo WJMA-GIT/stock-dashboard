@@ -30,7 +30,7 @@ import {
   Square,
   X,
 } from 'lucide-react';
-import { useToast } from '@/components/common';
+import { NumberField, useToast } from '@/components/common';
 import {
   analyzeEndOfDayStocks,
   type AnalysisProgress,
@@ -89,12 +89,21 @@ const SORT_OPTIONS: { field: SortField; label: string }[] = [
 
 // ========== 工具函数 ==========
 
+// 自愈旧版 bug 持久化的 max=0（清空输入被存成 0，导致过滤条件全灭）
+const healFilters = (filters: EndOfDayFilters): EndOfDayFilters => {
+  const healed = { ...filters };
+  for (const key of ['marketCapMax', 'changePercentMax', 'turnoverRateMax'] as const) {
+    if (healed[key] === 0) healed[key] = null;
+  }
+  return healed;
+};
+
 const loadFiltersFromStorage = (): EndOfDayFilters => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return { ...DEFAULT_FILTERS, ...parsed };
+      return healFilters({ ...DEFAULT_FILTERS, ...parsed });
     }
   } catch (error) {
     console.warn('读取筛选条件失败:', error);
@@ -192,7 +201,9 @@ function TimelineChart({ data, prevClose }: { data: TimelinePoint[]; prevClose: 
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
-    const getX = (index: number) => padding.left + (index / (data.length - 1)) * chartWidth;
+    // 单点分时（开盘首分钟）分母为 0 会产生 NaN 路径
+    const getX = (index: number) =>
+      padding.left + (index / Math.max(data.length - 1, 1)) * chartWidth;
     const getY = (value: number) => padding.top + ((maxValue - value) / range) * chartHeight;
 
     const pricePath = data
@@ -610,7 +621,10 @@ export function EndOfDayPicker() {
   );
 
   // 更新筛选条件
-  const handleFilterChange = (key: keyof EndOfDayFilters, value: number | boolean) => {
+  const handleFilterChange = (
+    key: keyof EndOfDayFilters,
+    value: number | boolean | null
+  ) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -636,7 +650,7 @@ export function EndOfDayPicker() {
 
   // 加载方案
   const handleLoadScheme = useCallback((scheme: SavedScheme) => {
-    setFilters(scheme.filters);
+    setFilters(healFilters(scheme.filters));
     setShowSchemePanel(false);
     toast.success(`已加载方案「${scheme.name}」`);
   }, [toast]);
@@ -651,7 +665,7 @@ export function EndOfDayPicker() {
 
   // 加载最近使用
   const handleLoadRecent = useCallback((recent: RecentUsage) => {
-    setFilters(recent.filters);
+    setFilters(healFilters(recent.filters));
     setShowRecentPanel(false);
     toast.success('已加载历史配置');
   }, [toast]);
@@ -968,22 +982,20 @@ export function EndOfDayPicker() {
                     <div className={styles.filterValue}>
                       {isEditing ? (
                         <>
-                          <input
-                            type="number"
+                          <NumberField
                             value={filters.marketCapMin}
-                            onChange={(e) =>
-                              handleFilterChange('marketCapMin', parseFloat(e.target.value) || 0)
-                            }
+                            min={0}
+                            onCommit={(v) => handleFilterChange('marketCapMin', v ?? 0)}
                             className={styles.filterInput}
                             onClick={(e) => e.stopPropagation()}
                           />
                           <span className={styles.filterSeparator}>~</span>
-                          <input
-                            type="number"
+                          <NumberField
                             value={filters.marketCapMax}
-                            onChange={(e) =>
-                              handleFilterChange('marketCapMax', parseFloat(e.target.value) || 0)
-                            }
+                            nullable
+                            min={0}
+                            placeholder="不限"
+                            onCommit={(v) => handleFilterChange('marketCapMax', v)}
                             className={styles.filterInput}
                             onClick={(e) => e.stopPropagation()}
                           />
@@ -991,7 +1003,7 @@ export function EndOfDayPicker() {
                         </>
                       ) : (
                         <span className={styles.filterDisplay}>
-                          {filters.marketCapMin} ~ {filters.marketCapMax}
+                          {filters.marketCapMin} ~ {filters.marketCapMax ?? '不限'}
                           <span className={styles.filterUnit}>亿</span>
                         </span>
                       )}
@@ -1003,18 +1015,14 @@ export function EndOfDayPicker() {
                     <span className={styles.filterLabel}>量比</span>
                     <div className={styles.filterValue}>
                       {isEditing ? (
-                        <>
-                          <input
-                            type="number"
-                            value={filters.volumeRatioMin}
-                            onChange={(e) =>
-                              handleFilterChange('volumeRatioMin', parseFloat(e.target.value) || 0)
-                            }
-                            className={styles.filterInput}
-                            onClick={(e) => e.stopPropagation()}
-                            step="0.1"
-                          />
-                        </>
+                        <NumberField
+                          value={filters.volumeRatioMin}
+                          min={0}
+                          step="0.1"
+                          onCommit={(v) => handleFilterChange('volumeRatioMin', v ?? 0)}
+                          className={styles.filterInput}
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       ) : (
                         <span className={styles.filterDisplay}>≥ {filters.volumeRatioMin}</span>
                       )}
@@ -1027,32 +1035,28 @@ export function EndOfDayPicker() {
                     <div className={styles.filterValue}>
                       {isEditing ? (
                         <>
-                          <input
-                            type="number"
+                          <NumberField
                             value={filters.changePercentMin}
-                            onChange={(e) =>
-                              handleFilterChange('changePercentMin', parseFloat(e.target.value) || 0)
-                            }
+                            step="0.5"
+                            onCommit={(v) => handleFilterChange('changePercentMin', v ?? 0)}
                             className={styles.filterInput}
                             onClick={(e) => e.stopPropagation()}
-                            step="0.5"
                           />
                           <span className={styles.filterSeparator}>~</span>
-                          <input
-                            type="number"
+                          <NumberField
                             value={filters.changePercentMax}
-                            onChange={(e) =>
-                              handleFilterChange('changePercentMax', parseFloat(e.target.value) || 0)
-                            }
+                            nullable
+                            step="0.5"
+                            placeholder="不限"
+                            onCommit={(v) => handleFilterChange('changePercentMax', v)}
                             className={styles.filterInput}
                             onClick={(e) => e.stopPropagation()}
-                            step="0.5"
                           />
                           <span className={styles.filterUnit}>%</span>
                         </>
                       ) : (
                         <span className={styles.filterDisplay}>
-                          {filters.changePercentMin} ~ {filters.changePercentMax}
+                          {filters.changePercentMin} ~ {filters.changePercentMax ?? '不限'}
                           <span className={styles.filterUnit}>%</span>
                         </span>
                       )}
@@ -1065,32 +1069,30 @@ export function EndOfDayPicker() {
                     <div className={styles.filterValue}>
                       {isEditing ? (
                         <>
-                          <input
-                            type="number"
+                          <NumberField
                             value={filters.turnoverRateMin}
-                            onChange={(e) =>
-                              handleFilterChange('turnoverRateMin', parseFloat(e.target.value) || 0)
-                            }
+                            min={0}
+                            step="0.5"
+                            onCommit={(v) => handleFilterChange('turnoverRateMin', v ?? 0)}
                             className={styles.filterInput}
                             onClick={(e) => e.stopPropagation()}
-                            step="0.5"
                           />
                           <span className={styles.filterSeparator}>~</span>
-                          <input
-                            type="number"
+                          <NumberField
                             value={filters.turnoverRateMax}
-                            onChange={(e) =>
-                              handleFilterChange('turnoverRateMax', parseFloat(e.target.value) || 0)
-                            }
+                            nullable
+                            min={0}
+                            step="0.5"
+                            placeholder="不限"
+                            onCommit={(v) => handleFilterChange('turnoverRateMax', v)}
                             className={styles.filterInput}
                             onClick={(e) => e.stopPropagation()}
-                            step="0.5"
                           />
                           <span className={styles.filterUnit}>%</span>
                         </>
                       ) : (
                         <span className={styles.filterDisplay}>
-                          {filters.turnoverRateMin} ~ {filters.turnoverRateMax}
+                          {filters.turnoverRateMin} ~ {filters.turnoverRateMax ?? '不限'}
                           <span className={styles.filterUnit}>%</span>
                         </span>
                       )}
