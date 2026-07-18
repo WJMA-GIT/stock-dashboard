@@ -1249,7 +1249,7 @@ export function StockDetail() {
                 <div className={styles.fundItem}>
                   <span className={styles.fundLabel}>主力净流入</span>
                   <span className={`${styles.fundValue} ${getChangeColorClass(fundFlow.mainNet)}`}>
-                    {formatAmount(fundFlow.mainNet / 10000)}
+                    {formatAmount(fundFlow.mainNet)}
                   </span>
                 </div>
                 <div className={styles.fundItem}>
@@ -1265,7 +1265,7 @@ export function StockDetail() {
                 <div className={styles.fundItem}>
                   <span className={styles.fundLabel}>散户净流入</span>
                   <span className={`${styles.fundValue} ${getChangeColorClass(fundFlow.retailNet)}`}>
-                    {formatAmount(fundFlow.retailNet / 10000)}
+                    {formatAmount(fundFlow.retailNet)}
                   </span>
                 </div>
               </div>

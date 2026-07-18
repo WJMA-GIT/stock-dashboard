@@ -40,6 +40,7 @@ import {
   type TimelinePoint,
 } from '@/services/analysis';
 import { addToWatchlist, isInWatchlist } from '@/services/storage';
+import { formatAmount } from '@/utils/format';
 import styles from './EndOfDayPicker.module.css';
 
 // ========== 类型定义 ==========
@@ -167,15 +168,6 @@ const addRecentUsage = (filters: EndOfDayFilters): void => {
 const formatNumber = (num: number | null, decimals = 2): string => {
   if (num === null || num === undefined) return '-';
   return num.toFixed(decimals);
-};
-
-const formatLargeNumber = (num: number): string => {
-  if (num >= 100000000) {
-    return (num / 100000000).toFixed(2) + '亿';
-  } else if (num >= 10000) {
-    return (num / 10000).toFixed(2) + '万';
-  }
-  return num.toFixed(2);
 };
 
 // ========== 子组件 ==========
@@ -426,7 +418,7 @@ function StockCard({
         </div>
         <div className={styles.dataItem}>
           <span className={styles.dataLabel}>成交额</span>
-          <span className={styles.dataValue}>{formatLargeNumber(stock.amount)}</span>
+          <span className={styles.dataValue}>{formatAmount(stock.amount)}</span>
         </div>
       </div>
 

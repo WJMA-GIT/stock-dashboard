@@ -1,6 +1,10 @@
 /**
  * Stock SDK 服务层
  * 封装 SDK 调用，提供缓存与错误处理
+ *
+ * 单位契约：经本层出口的金额字段统一为——市值:亿元、成交额/资金流:万元。
+ * 东财板块接口原样透传 f20/f6（单位:元），在本层归一；腾讯 FullQuote.amount(万)、
+ * totalMarketCap(亿)、fundFlow(万) 原生即符合契约，直接透传。页面不得再自行换算。
  */
 
 import { StockSDK } from 'stock-sdk';
@@ -284,12 +288,30 @@ export async function getTodayTimeline(code: string) {
 
 // ========== 板块 API ==========
 
+// 东财板块口径归一：f20(元)→亿、f6(元)→万，对齐本层单位契约
+function normalizeBoardUnits<T extends { totalMarketCap: number | null }>(board: T): T {
+  return {
+    ...board,
+    totalMarketCap:
+      board.totalMarketCap === null ? null : board.totalMarketCap / 1e8,
+  };
+}
+
+function normalizeConstituentUnits<T extends { amount: number | null }>(row: T): T {
+  return {
+    ...row,
+    amount: row.amount === null ? null : row.amount / 1e4,
+  };
+}
+
 /**
  * 获取行业板块列表
  */
 export async function getIndustryList() {
   const key = getCacheKey('getIndustryList');
-  return withCache(key, DEFAULT_TTL.boardList, () => sdk.board.industry.list());
+  return withCache(key, DEFAULT_TTL.boardList, async () =>
+    (await sdk.board.industry.list()).map(normalizeBoardUnits)
+  );
 }
 
 /**
@@ -297,7 +319,9 @@ export async function getIndustryList() {
  */
 export async function getConceptList() {
   const key = getCacheKey('getConceptList');
-  return withCache(key, DEFAULT_TTL.boardList, () => sdk.board.concept.list());
+  return withCache(key, DEFAULT_TTL.boardList, async () =>
+    (await sdk.board.concept.list()).map(normalizeBoardUnits)
+  );
 }
 
 /**
@@ -305,8 +329,8 @@ export async function getConceptList() {
  */
 export async function getIndustryConstituents(symbol: string) {
   const key = getCacheKey('getIndustryConstituents', symbol);
-  return withCache(key, DEFAULT_TTL.constituents, () =>
-    sdk.board.industry.constituents(symbol)
+  return withCache(key, DEFAULT_TTL.constituents, async () =>
+    (await sdk.board.industry.constituents(symbol)).map(normalizeConstituentUnits)
   );
 }
 
@@ -315,8 +339,8 @@ export async function getIndustryConstituents(symbol: string) {
  */
 export async function getConceptConstituents(symbol: string) {
   const key = getCacheKey('getConceptConstituents', symbol);
-  return withCache(key, DEFAULT_TTL.constituents, () =>
-    sdk.board.concept.constituents(symbol)
+  return withCache(key, DEFAULT_TTL.constituents, async () =>
+    (await sdk.board.concept.constituents(symbol)).map(normalizeConstituentUnits)
   );
 }
 
