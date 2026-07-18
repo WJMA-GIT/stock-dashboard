@@ -2,7 +2,7 @@
  * 扫描页面
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Play, Plus, ScanLine, SquareX } from 'lucide-react';
@@ -106,6 +106,13 @@ export function Scanner() {
   const navigate = useNavigate();
   const toast = useToast();
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // 离开页面即中止扫描：扫描池可达上百个请求，不中止会在后台跑完
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
   const { industryList, conceptList } = useBoardData();
 
   const [selectedSignals, setSelectedSignals] = useState<ScannerSignalKey[]>(['ma_golden']);

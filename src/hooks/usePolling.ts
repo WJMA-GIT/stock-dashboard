@@ -54,15 +54,24 @@ export function usePolling<T>(
   const timerRef = useRef<number | null>(null);
   const fetcherRef = useRef(fetcher);
   const isMountedRef = useRef(true);
+  // 请求在途时 pause/切后台，完成回调里的闭包是过期的——一律经 ref 读最新状态再决定是否续排
+  const stateRef = useRef({ enabled, isPaused, pauseOnHidden, interval });
 
-  // 更新 fetcher 引用
   fetcherRef.current = fetcher;
+  stateRef.current = { enabled, isPaused, pauseOnHidden, interval };
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
+  }, []);
+
+  const canRun = useCallback(() => {
+    const state = stateRef.current;
+    if (!isMountedRef.current || !state.enabled || state.isPaused) return false;
+    if (state.pauseOnHidden && document.hidden) return false;
+    return true;
   }, []);
 
   const refresh = useCallback(async () => {
@@ -84,20 +93,24 @@ export function usePolling<T>(
 
   const scheduleNext = useCallback(() => {
     clearTimer();
-    if (!isMountedRef.current || isPaused || !enabled) return;
+    if (!canRun()) return;
     timerRef.current = window.setTimeout(async () => {
+      timerRef.current = null;
+      if (!canRun()) return;
       await refresh();
       scheduleNext();
-    }, interval);
-  }, [clearTimer, interval, isPaused, enabled, refresh]);
+    }, stateRef.current.interval);
+  }, [clearTimer, canRun, refresh]);
 
   const pause = useCallback(() => {
     setIsPaused(true);
+    stateRef.current.isPaused = true;
     clearTimer();
   }, [clearTimer]);
 
   const resume = useCallback(() => {
     setIsPaused(false);
+    stateRef.current.isPaused = false;
   }, []);
 
   // 页面可见性变化处理
@@ -107,7 +120,7 @@ export function usePolling<T>(
     const handleVisibilityChange = () => {
       if (document.hidden) {
         clearTimer();
-      } else if (!isPaused && enabled) {
+      } else if (canRun()) {
         refresh().then(scheduleNext);
       }
     };
@@ -116,7 +129,7 @@ export function usePolling<T>(
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [pauseOnHidden, isPaused, enabled, clearTimer, refresh, scheduleNext]);
+  }, [pauseOnHidden, canRun, clearTimer, refresh, scheduleNext]);
 
   // 启动/停止轮询
   useEffect(() => {
@@ -134,14 +147,7 @@ export function usePolling<T>(
       isMountedRef.current = false;
       clearTimer();
     };
-  }, [enabled, isPaused, immediate, refresh, scheduleNext, clearTimer]);
-
-  // isPaused 变化时重新调度
-  useEffect(() => {
-    if (!isPaused && enabled) {
-      scheduleNext();
-    }
-  }, [isPaused, enabled, scheduleNext]);
+  }, [enabled, isPaused, immediate, interval, refresh, scheduleNext, clearTimer]);
 
   return {
     isLoading,

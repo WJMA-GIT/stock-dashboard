@@ -520,6 +520,13 @@ export function EndOfDayPicker() {
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  // 离开页面即中止分析：全市场扫描请求量大，不中止会在后台跑完
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   // 方案管理
   const [savedSchemes, setSavedSchemes] = useState<SavedScheme[]>(loadSchemesFromStorage);
   const [recentUsage, setRecentUsage] = useState<RecentUsage[]>(loadRecentUsageFromStorage);

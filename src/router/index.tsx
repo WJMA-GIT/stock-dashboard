@@ -3,7 +3,7 @@
  */
 
 import { Suspense, lazy, type ReactNode } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, useParams } from 'react-router-dom';
 import { Layout } from '@/components/layout';
 import { Dashboard } from '@/pages/Dashboard';
 import { Loading } from '@/components/common';
@@ -32,6 +32,17 @@ function withSuspense(element: ReactNode) {
   );
 }
 
+// key 按参数重挂载：切换股票/板块即重置组件，旧实例在途请求的 setState 作废，杜绝串数据
+function StockDetailRoute() {
+  const { code } = useParams<{ code: string }>();
+  return <StockDetail key={code} />;
+}
+
+function BoardDetailRoute() {
+  const { type, code } = useParams<{ type: string; code: string }>();
+  return <BoardDetail key={`${type}/${code}`} />;
+}
+
 const router = createBrowserRouter(
   [
     {
@@ -56,7 +67,7 @@ const router = createBrowserRouter(
         },
         {
           path: 'boards/:type/:code',
-          element: withSuspense(<BoardDetail />),
+          element: withSuspense(<BoardDetailRoute />),
         },
         {
           path: 'watchlist',
@@ -76,7 +87,7 @@ const router = createBrowserRouter(
         },
         {
           path: 's/:code',
-          element: withSuspense(<StockDetail />),
+          element: withSuspense(<StockDetailRoute />),
         },
       ],
     },

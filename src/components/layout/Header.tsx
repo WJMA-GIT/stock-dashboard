@@ -69,6 +69,18 @@ export function Header() {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<number | null>(null);
+  // 请求序号：旧关键词的慢响应后到会覆盖新结果，回车就会跳错股票
+  const searchSeqRef = useRef(0);
+
+  const cancelPendingSearch = useCallback(() => {
+    searchSeqRef.current += 1;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => cancelPendingSearch, [cancelPendingSearch]);
 
   // 快速加自选
   const handleQuickAdd = (e: React.MouseEvent, item: AppSearchResult) => {
@@ -117,15 +129,20 @@ export function Header() {
       return;
     }
 
+    const seq = ++searchSeqRef.current;
     setIsLoading(true);
     try {
       const data = await searchApi(kw);
+      if (searchSeqRef.current !== seq) return;
       setResults(data);
     } catch (error) {
+      if (searchSeqRef.current !== seq) return;
       console.error('Search error:', error);
       setResults([]);
     } finally {
-      setIsLoading(false);
+      if (searchSeqRef.current === seq) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -158,6 +175,7 @@ export function Header() {
       type: item.type,
     });
     setHistory(getSearchHistory());
+    cancelPendingSearch();
     setKeyword('');
     setIsOpen(false);
     setResults([]);
@@ -246,6 +264,7 @@ export function Header() {
             <button
               className={styles.clearBtn}
               onClick={() => {
+                cancelPendingSearch();
                 setKeyword('');
                 setResults([]);
                 inputRef.current?.focus();

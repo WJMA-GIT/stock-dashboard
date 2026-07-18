@@ -2,7 +2,7 @@
  * 个股详情页
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Star, StarOff, Bell, Trash2 } from 'lucide-react';
@@ -769,10 +769,14 @@ export function StockDetail() {
     setAlerts(getAlertsByCode(normalizedCode));
   }, [normalizedCode]);
 
+  // 每个 alertType 只预填一次：quote 随轮询高频更新，无守卫会持续覆写用户正在输入的阈值
+  const prefilledAlertTypeRef = useRef<AlertType | null>(null);
+
   useEffect(() => {
-    if (!quote) {
+    if (!quote || prefilledAlertTypeRef.current === alertType) {
       return;
     }
+    prefilledAlertTypeRef.current = alertType;
 
     switch (alertType) {
       case 'change_percent_gte':
@@ -805,22 +809,31 @@ export function StockDetail() {
     }
   }, [normalizedCode]);
 
+  // 周期切换后旧周期的慢响应可能后到，比对最新周期丢弃过期数据
+  const minutePeriodRef = useRef(minutePeriod);
+  minutePeriodRef.current = minutePeriod;
+  const klinePeriodRef = useRef(klinePeriod);
+  klinePeriodRef.current = klinePeriod;
+
   const fetchTimeline = useCallback(async () => {
     if (!normalizedCode) {
       return;
     }
 
+    const requestPeriod = minutePeriod;
     try {
-      if (minutePeriod === '1') {
+      if (requestPeriod === '1') {
         const data = await getTodayTimeline(normalizedCode);
+        if (minutePeriodRef.current !== requestPeriod) return;
         setTimeline(data);
         setMinuteKline([]);
         return;
       }
 
       const data = await getMinuteKline(normalizedCode, {
-        period: minutePeriod as '5' | '15' | '30' | '60',
+        period: requestPeriod as '5' | '15' | '30' | '60',
       });
+      if (minutePeriodRef.current !== requestPeriod) return;
       setMinuteKline(data as MinuteKlineItem[]);
       setTimeline(null);
     } catch (error) {
@@ -833,11 +846,13 @@ export function StockDetail() {
       return;
     }
 
+    const requestPeriod = klinePeriod;
     try {
       const history = await getHistoryKline(normalizedCode, {
-        period: klinePeriod as 'daily' | 'weekly' | 'monthly',
+        period: requestPeriod as 'daily' | 'weekly' | 'monthly',
         adjust: 'qfq',
       });
+      if (klinePeriodRef.current !== requestPeriod) return;
 
       const enriched = addIndicators(history, {
         ma: { periods: settings.indicatorConfig.ma },
@@ -926,6 +941,8 @@ export function StockDetail() {
     }
   }, [normalizedCode]);
 
+  // 整载只跑一次（换股由路由 key 重挂载触发）；周期/指标变化走下面的专属增量 effect，
+  // 若把 fetch 回调放进依赖，切个 tab 就会全屏 loading + 五个接口全部重拉
   useEffect(() => {
     const loadInitial = async () => {
       setLoading(true);
@@ -940,19 +957,27 @@ export function StockDetail() {
     };
 
     loadInitial();
-  }, [fetchDividendData, fetchFundData, fetchKline, fetchQuote, fetchTimeline]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [normalizedCode]);
 
+  // 跳过挂载首轮（loadInitial 已拉过），只响应周期/指标配置变化
+  const timelineFetchedOnceRef = useRef(false);
   useEffect(() => {
-    if (!loading && normalizedCode) {
-      fetchTimeline();
+    if (!timelineFetchedOnceRef.current) {
+      timelineFetchedOnceRef.current = true;
+      return;
     }
-  }, [fetchTimeline, loading, normalizedCode]);
+    fetchTimeline();
+  }, [fetchTimeline]);
 
+  const klineFetchedOnceRef = useRef(false);
   useEffect(() => {
-    if (!loading && normalizedCode) {
-      fetchKline();
+    if (!klineFetchedOnceRef.current) {
+      klineFetchedOnceRef.current = true;
+      return;
     }
-  }, [fetchKline, loading, normalizedCode]);
+    fetchKline();
+  }, [fetchKline]);
 
   usePolling(
     useCallback(async () => {
@@ -961,12 +986,14 @@ export function StockDetail() {
     {
       interval: detailRefreshInterval,
       enabled: !loading,
+      immediate: false,
     }
   );
 
   usePolling(fetchFundData, {
     interval: fundRefreshInterval,
     enabled: !loading,
+    immediate: false,
   });
 
   const handleToggleWatchlist = useCallback(() => {
