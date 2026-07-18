@@ -104,6 +104,7 @@ const DEFAULT_TTL = {
   dragonTiger: 3600000, // 龙虎榜 1h
   blockTrade: 3600000, // 大宗交易 1h
   margin: 21600000, // 融资融券 6h
+  marketSnapshot: 60000, // 全市场快照 60s（约 10+ 请求/次，Dashboard/Scanner/analysis 共享）
 };
 
 function normalizeSearchResult(item: SDKSearchResult): AppSearchResult {
@@ -169,6 +170,9 @@ function setCache<T>(key: string, data: T, ttl: number): void {
   });
 }
 
+// 在途请求去重：缓存只在 resolve 后写入，并发调用（如 Dashboard 与 Scanner 同时拉快照）会各发一份
+const inFlight = new Map<string, Promise<unknown>>();
+
 /**
  * 带缓存的 SDK 调用包装器
  */
@@ -182,27 +186,23 @@ async function withCache<T>(
     return cached;
   }
 
-  const data = await fetcher();
-  setCache(key, data, ttl);
-  return data;
-}
-
-/**
- * 清除所有缓存
- */
-export function clearAllCache(): void {
-  cache.clear();
-}
-
-/**
- * 清除指定前缀的缓存
- */
-export function clearCacheByPrefix(prefix: string): void {
-  for (const key of cache.keys()) {
-    if (key.startsWith(prefix)) {
-      cache.delete(key);
-    }
+  const pending = inFlight.get(key) as Promise<T> | undefined;
+  if (pending) {
+    return pending;
   }
+
+  const promise = (async () => {
+    try {
+      const data = await fetcher();
+      setCache(key, data, ttl);
+      return data;
+    } finally {
+      inFlight.delete(key);
+    }
+  })();
+
+  inFlight.set(key, promise);
+  return promise;
 }
 
 // ========== 实时行情 API ==========
@@ -233,14 +233,15 @@ export async function getAllQuotesByCodes(
 }
 
 /**
- * 获取全部 A 股行情
+ * 获取全部 A 股行情（60s 快照缓存；缓存命中时 onProgress 不会触发）
  */
 export async function getAllAShareQuotes(options?: {
   batchSize?: number;
   concurrency?: number;
   onProgress?: (completed: number, total: number) => void;
 }) {
-  return sdk.batch.cn(options);
+  const key = getCacheKey('getAllAShareQuotes', options?.batchSize, options?.concurrency);
+  return withCache(key, DEFAULT_TTL.marketSnapshot, () => sdk.batch.cn(options));
 }
 
 // ========== K 线数据 API ==========
@@ -525,31 +526,11 @@ export async function getSectorFundFlowHistory(
 }
 
 /**
- * 获取北向/南向分时资金
- */
-export async function getNorthboundMinute(direction: 'north' | 'south' = 'north') {
-  const key = getCacheKey('getNorthboundMinute', direction);
-  return withCache(key, DEFAULT_TTL.northbound, () => sdk.northbound.minute(direction));
-}
-
-/**
  * 获取北向/南向资金汇总
  */
 export async function getNorthboundFlowSummary() {
   const key = getCacheKey('getNorthboundFlowSummary');
   return withCache(key, DEFAULT_TTL.northbound, () => sdk.northbound.summary());
-}
-
-/**
- * 获取北向持股排行
- */
-export async function getNorthboundHoldingRank(options?: {
-  market?: 'all' | 'shanghai' | 'shenzhen';
-  period?: 'today' | '3day' | '5day' | '10day' | 'month' | 'quarter' | 'year';
-  date?: string;
-}) {
-  const key = getCacheKey('getNorthboundHoldingRank', options);
-  return withCache(key, DEFAULT_TTL.northbound, () => sdk.northbound.holdingRank(options));
 }
 
 /**

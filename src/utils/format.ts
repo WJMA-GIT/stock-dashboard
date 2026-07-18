@@ -183,38 +183,6 @@ export function formatRatio(value: number | null | undefined): string {
 }
 
 /**
- * 格式化时间
- */
-export function formatTime(time: string | undefined): string {
-  if (!time) return '--';
-  // 处理 yyyyMMddHHmmss 格式
-  if (time.length === 14) {
-    return `${time.slice(8, 10)}:${time.slice(10, 12)}:${time.slice(12, 14)}`;
-  }
-  // 处理 HH:mm 格式
-  if (time.length === 5 && time.includes(':')) {
-    return time;
-  }
-  return time;
-}
-
-/**
- * 格式化日期
- */
-export function formatDate(date: string | undefined): string {
-  if (!date) return '--';
-  // 处理 YYYY-MM-DD 格式
-  if (date.includes('-')) {
-    return date;
-  }
-  // 处理 YYYYMMDD 格式
-  if (date.length === 8) {
-    return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
-  }
-  return date;
-}
-
-/**
  * 获取涨跌颜色类名
  */
 export function getChangeColorClass(value: number | null | undefined): string {
@@ -222,16 +190,6 @@ export function getChangeColorClass(value: number | null | undefined): string {
     return 'text-flat';
   }
   return value > 0 ? 'text-rise' : 'text-fall';
-}
-
-/**
- * 获取涨跌颜色值（用于图表）
- */
-export function getChangeColor(value: number | null | undefined): string {
-  if (value === null || value === undefined || isNaN(value) || value === 0) {
-    return 'var(--color-flat)';
-  }
-  return value > 0 ? 'var(--color-rise)' : 'var(--color-fall)';
 }
 
 /**

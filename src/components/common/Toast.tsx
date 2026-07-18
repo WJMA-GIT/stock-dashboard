@@ -2,7 +2,7 @@
  * Toast 提示组件
  */
 
-import { useState, useCallback, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 import { ToastContext, type ToastType, type ToastContextValue } from './toastContext';
@@ -22,8 +22,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const addToast = useCallback((type: ToastType, message: string) => {
     const id = ++toastId;
     setToasts((prev) => [...prev, { id, type, message }]);
-    
-    // 自动移除
+
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3000);
@@ -33,12 +32,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const value: ToastContextValue = {
-    success: (message: string) => addToast('success', message),
-    error: (message: string) => addToast('error', message),
-    info: (message: string) => addToast('info', message),
-    warning: (message: string) => addToast('warning', message),
-  };
+  // context value 不 memo 的话，每条 toast 的出现/消失都会重渲染所有 useToast 消费页
+  const value: ToastContextValue = useMemo(
+    () => ({
+      success: (message: string) => addToast('success', message),
+      error: (message: string) => addToast('error', message),
+      info: (message: string) => addToast('info', message),
+      warning: (message: string) => addToast('warning', message),
+    }),
+    [addToast]
+  );
 
   const getIcon = (type: ToastType) => {
     switch (type) {

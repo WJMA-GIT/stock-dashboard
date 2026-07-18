@@ -13,6 +13,7 @@ import {
   formatTurnover,
   getChangeColorClass,
 } from '@/utils/format';
+import type { IndustryBoard } from 'stock-sdk';
 import styles from './Rankings.module.css';
 
 // 榜单类型
@@ -23,62 +24,41 @@ const RANKING_TYPES = [
   { key: 'turnover', label: '换手率', icon: <RefreshCw size={14} /> },
 ];
 
-// 排序函数
 type SortKey = 'rise' | 'fall' | 'amount' | 'turnover';
+
+function sortBoards(list: IndustryBoard[], rankType: SortKey): IndustryBoard[] {
+  const sorted = [...list];
+  switch (rankType) {
+    case 'fall':
+      sorted.sort((a, b) => (a.changePercent ?? 0) - (b.changePercent ?? 0));
+      break;
+    case 'turnover':
+      sorted.sort((a, b) => (b.turnoverRate ?? 0) - (a.turnoverRate ?? 0));
+      break;
+    case 'amount':
+      sorted.sort((a, b) => (b.totalMarketCap ?? 0) - (a.totalMarketCap ?? 0));
+      break;
+    case 'rise':
+    default:
+      sorted.sort((a, b) => (b.changePercent ?? 0) - (a.changePercent ?? 0));
+      break;
+  }
+  return sorted.slice(0, 50);
+}
 
 export function Rankings() {
   const navigate = useNavigate();
-
-  // 使用共享的板块数据（优化：避免重复请求）
   const { industryList, conceptList, loading } = useBoardData();
-
-  // 本地 UI 状态
   const [rankType, setRankType] = useState<SortKey>('rise');
 
-  // 排序后的板块数据
-  const sortedIndustry = useMemo(() => {
-    const sorted = [...industryList];
-    switch (rankType) {
-      case 'rise':
-        sorted.sort((a, b) => (b.changePercent ?? 0) - (a.changePercent ?? 0));
-        break;
-      case 'fall':
-        sorted.sort((a, b) => (a.changePercent ?? 0) - (b.changePercent ?? 0));
-        break;
-      case 'turnover':
-        sorted.sort((a, b) => (b.turnoverRate ?? 0) - (a.turnoverRate ?? 0));
-        break;
-      case 'amount':
-        sorted.sort((a, b) => (b.totalMarketCap ?? 0) - (a.totalMarketCap ?? 0));
-        break;
-      default:
-        break;
-    }
-    return sorted.slice(0, 50);
-  }, [industryList, rankType]);
+  const sections = useMemo(
+    () => [
+      { title: '行业板块', type: 'industry' as const, list: sortBoards(industryList, rankType) },
+      { title: '概念板块', type: 'concept' as const, list: sortBoards(conceptList, rankType) },
+    ],
+    [industryList, conceptList, rankType]
+  );
 
-  const sortedConcept = useMemo(() => {
-    const sorted = [...conceptList];
-    switch (rankType) {
-      case 'rise':
-        sorted.sort((a, b) => (b.changePercent ?? 0) - (a.changePercent ?? 0));
-        break;
-      case 'fall':
-        sorted.sort((a, b) => (a.changePercent ?? 0) - (b.changePercent ?? 0));
-        break;
-      case 'turnover':
-        sorted.sort((a, b) => (b.turnoverRate ?? 0) - (a.turnoverRate ?? 0));
-        break;
-      case 'amount':
-        sorted.sort((a, b) => (b.totalMarketCap ?? 0) - (a.totalMarketCap ?? 0));
-        break;
-      default:
-        break;
-    }
-    return sorted.slice(0, 50);
-  }, [conceptList, rankType]);
-
-  // 跳转板块详情
   const handleBoardClick = (code: string, type: 'industry' | 'concept') => {
     navigate(`/boards/${type}/${code}`);
   };
@@ -89,7 +69,6 @@ export function Rankings() {
 
   return (
     <div className={styles.rankings}>
-      {/* 控制栏 */}
       <div className={styles.controls}>
         <Tabs
           items={RANKING_TYPES}
@@ -99,105 +78,56 @@ export function Rankings() {
       </div>
 
       <div className={styles.content}>
-        {/* 行业榜单 */}
-        <Card title="行业板块" padding="sm">
-          <div className={styles.rankTable}>
-            <div className={styles.tableHeader}>
-              <span className={styles.colRank}>排名</span>
-              <span className={styles.colName}>名称</span>
-              <span className={styles.colChange}>涨跌幅</span>
-              <span className={styles.colLeader}>领涨股</span>
-              <span className={styles.colStats}>涨/跌</span>
-              <span className={styles.colTurnover}>换手</span>
-            </div>
-            <div className={styles.tableBody}>
-              {sortedIndustry.map((item, index) => (
-                <motion.div
-                  key={item.code}
-                  className={styles.tableRow}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.02 }}
-                  onClick={() => handleBoardClick(item.code, 'industry')}
-                >
-                  <span className={styles.colRank}>
-                    <span className={`${styles.rankNum} ${index < 3 ? styles.top3 : ''}`}>
-                      {index + 1}
+        {sections.map((section) => (
+          <Card key={section.type} title={section.title} padding="sm">
+            <div className={styles.rankTable}>
+              <div className={styles.tableHeader}>
+                <span className={styles.colRank}>排名</span>
+                <span className={styles.colName}>名称</span>
+                <span className={styles.colChange}>涨跌幅</span>
+                <span className={styles.colLeader}>领涨股</span>
+                <span className={styles.colStats}>涨/跌</span>
+                <span className={styles.colTurnover}>换手</span>
+              </div>
+              <div className={styles.tableBody}>
+                {section.list.map((item, index) => (
+                  <motion.div
+                    key={item.code}
+                    className={styles.tableRow}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.02 }}
+                    onClick={() => handleBoardClick(item.code, section.type)}
+                  >
+                    <span className={styles.colRank}>
+                      <span className={`${styles.rankNum} ${index < 3 ? styles.top3 : ''}`}>
+                        {index + 1}
+                      </span>
                     </span>
-                  </span>
-                  <span className={styles.colName}>{item.name}</span>
-                  <span className={`${styles.colChange} ${getChangeColorClass(item.changePercent)}`}>
-                    {formatPercent(item.changePercent)}
-                  </span>
-                  <div className={styles.colLeader}>
-                    <span className={styles.leaderName}>{item.leadingStock}</span>
-                    <span className={getChangeColorClass(item.leadingStockChangePercent)}>
-                      {formatPercent(item.leadingStockChangePercent)}
+                    <span className={styles.colName}>{item.name}</span>
+                    <span className={`${styles.colChange} ${getChangeColorClass(item.changePercent)}`}>
+                      {formatPercent(item.changePercent)}
                     </span>
-                  </div>
-                  <span className={styles.colStats}>
-                    <span className="text-rise">{item.riseCount}</span>
-                    <span>/</span>
-                    <span className="text-fall">{item.fallCount}</span>
-                  </span>
-                  <span className={styles.colTurnover}>
-                    {formatTurnover(item.turnoverRate)}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        {/* 概念榜单 */}
-        <Card title="概念板块" padding="sm">
-          <div className={styles.rankTable}>
-            <div className={styles.tableHeader}>
-              <span className={styles.colRank}>排名</span>
-              <span className={styles.colName}>名称</span>
-              <span className={styles.colChange}>涨跌幅</span>
-              <span className={styles.colLeader}>领涨股</span>
-              <span className={styles.colStats}>涨/跌</span>
-              <span className={styles.colTurnover}>换手</span>
-            </div>
-            <div className={styles.tableBody}>
-              {sortedConcept.map((item, index) => (
-                <motion.div
-                  key={item.code}
-                  className={styles.tableRow}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.02 }}
-                  onClick={() => handleBoardClick(item.code, 'concept')}
-                >
-                  <span className={styles.colRank}>
-                    <span className={`${styles.rankNum} ${index < 3 ? styles.top3 : ''}`}>
-                      {index + 1}
+                    <div className={styles.colLeader}>
+                      <span className={styles.leaderName}>{item.leadingStock}</span>
+                      <span className={getChangeColorClass(item.leadingStockChangePercent)}>
+                        {formatPercent(item.leadingStockChangePercent)}
+                      </span>
+                    </div>
+                    <span className={styles.colStats}>
+                      <span className="text-rise">{item.riseCount}</span>
+                      <span>/</span>
+                      <span className="text-fall">{item.fallCount}</span>
                     </span>
-                  </span>
-                  <span className={styles.colName}>{item.name}</span>
-                  <span className={`${styles.colChange} ${getChangeColorClass(item.changePercent)}`}>
-                    {formatPercent(item.changePercent)}
-                  </span>
-                  <div className={styles.colLeader}>
-                    <span className={styles.leaderName}>{item.leadingStock}</span>
-                    <span className={getChangeColorClass(item.leadingStockChangePercent)}>
-                      {formatPercent(item.leadingStockChangePercent)}
+                    <span className={styles.colTurnover}>
+                      {formatTurnover(item.turnoverRate)}
                     </span>
-                  </div>
-                  <span className={styles.colStats}>
-                    <span className="text-rise">{item.riseCount}</span>
-                    <span>/</span>
-                    <span className="text-fall">{item.fallCount}</span>
-                  </span>
-                  <span className={styles.colTurnover}>
-                    {formatTurnover(item.turnoverRate)}
-                  </span>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))}
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        ))}
       </div>
     </div>
   );

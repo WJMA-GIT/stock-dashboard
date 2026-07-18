@@ -46,7 +46,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   // 只有用户显式切换才写 localStorage：挂载即持久化会让「跟随系统」分支永远进不去
   const [theme, setThemeState] = useState<Theme>(() => getStoredTheme() ?? getSystemTheme());
 
-  // 应用主题到 document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);

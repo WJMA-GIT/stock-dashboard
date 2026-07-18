@@ -39,7 +39,12 @@ import {
   isAnalysisAborted,
   type TimelinePoint,
 } from '@/services/analysis';
-import { addToWatchlist, isInWatchlist } from '@/services/storage';
+import {
+  addToWatchlist,
+  isInWatchlist,
+  getEodPickerState,
+  saveEodPickerState,
+} from '@/services/storage';
 import { formatAmount } from '@/utils/format';
 import styles from './EndOfDayPicker.module.css';
 
@@ -62,9 +67,6 @@ type SortOrder = 'asc' | 'desc';
 
 // ========== 常量 ==========
 
-const STORAGE_KEY = 'end-of-day-picker-settings';
-const SCHEMES_STORAGE_KEY = 'end-of-day-picker-schemes';
-const RECENT_USAGE_STORAGE_KEY = 'end-of-day-picker-recent';
 const MAX_RECENT_USAGE = 5;
 
 const DEFAULT_FILTERS: EndOfDayFilters = {
@@ -99,66 +101,26 @@ const healFilters = (filters: EndOfDayFilters): EndOfDayFilters => {
 };
 
 const loadFiltersFromStorage = (): EndOfDayFilters => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return healFilters({ ...DEFAULT_FILTERS, ...parsed });
-    }
-  } catch (error) {
-    console.warn('读取筛选条件失败:', error);
-  }
-  return DEFAULT_FILTERS;
+  const stored = getEodPickerState<Partial<EndOfDayFilters>>('filters', {});
+  return healFilters({ ...DEFAULT_FILTERS, ...stored });
 };
 
 const saveFiltersToStorage = (filters: EndOfDayFilters): void => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
-  } catch (error) {
-    console.warn('保存筛选条件失败:', error);
-  }
+  saveEodPickerState('filters', filters);
 };
 
-// 方案存储
-const loadSchemesFromStorage = (): SavedScheme[] => {
-  try {
-    const stored = localStorage.getItem(SCHEMES_STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (error) {
-    console.warn('读取方案失败:', error);
-  }
-  return [];
-};
+const loadSchemesFromStorage = (): SavedScheme[] =>
+  getEodPickerState<SavedScheme[]>('schemes', []);
 
 const saveSchemesToStorage = (schemes: SavedScheme[]): void => {
-  try {
-    localStorage.setItem(SCHEMES_STORAGE_KEY, JSON.stringify(schemes));
-  } catch (error) {
-    console.warn('保存方案失败:', error);
-  }
+  saveEodPickerState('schemes', schemes);
 };
 
-// 最近使用存储
-const loadRecentUsageFromStorage = (): RecentUsage[] => {
-  try {
-    const stored = localStorage.getItem(RECENT_USAGE_STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (error) {
-    console.warn('读取最近使用失败:', error);
-  }
-  return [];
-};
+const loadRecentUsageFromStorage = (): RecentUsage[] =>
+  getEodPickerState<RecentUsage[]>('recent', []);
 
 const saveRecentUsageToStorage = (recentUsage: RecentUsage[]): void => {
-  try {
-    localStorage.setItem(RECENT_USAGE_STORAGE_KEY, JSON.stringify(recentUsage));
-  } catch (error) {
-    console.warn('保存最近使用失败:', error);
-  }
+  saveEodPickerState('recent', recentUsage);
 };
 
 const addRecentUsage = (filters: EndOfDayFilters): void => {
@@ -554,9 +516,10 @@ export function EndOfDayPicker() {
   const [selectedStocks, setSelectedStocks] = useState<Set<string>>(new Set());
   const [showSelectMode, setShowSelectMode] = useState(false);
 
-  // 保存筛选条件
+  // 保存筛选条件（debounce：filters 随交互高频变化，不必每次都同步写盘）
   useEffect(() => {
-    saveFiltersToStorage(filters);
+    const timer = window.setTimeout(() => saveFiltersToStorage(filters), 500);
+    return () => clearTimeout(timer);
   }, [filters]);
 
   // 恢复默认设置

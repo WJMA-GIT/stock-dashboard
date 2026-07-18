@@ -133,8 +133,12 @@ export function BoardDetail() {
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      await Promise.all([fetchConstituents(), fetchSpot(), fetchFundFlowHistory()]);
-      await fetchKline();
+      await Promise.all([
+        fetchConstituents(),
+        fetchSpot(),
+        fetchFundFlowHistory(),
+        fetchKline(),
+      ]);
       setLoading(false);
     };
     loadAll();

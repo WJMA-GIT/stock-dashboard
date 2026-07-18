@@ -7,14 +7,12 @@ import type {
   WatchlistGroup,
   AlertRule,
   AppSettings,
-  HeatmapConfig,
-  IndicatorConfig,
   SearchHistoryItem,
   ColumnConfig,
 } from '@/types';
 import { normalizeStockCode } from '@/utils/format';
 
-// 存储键
+// 存储键（eod 三个 key 沿用旧字面量，保证既有用户数据不丢）
 const STORAGE_KEYS = {
   WATCHLIST_GROUPS: 'watchlist.groups',
   ALERTS: 'watchlist.alerts',
@@ -23,6 +21,9 @@ const STORAGE_KEYS = {
   HEATMAP_CONFIG: 'ui.heatmapConfig',
   INDICATOR_CONFIG: 'ui.indicatorConfig',
   SEARCH_HISTORY: 'search.recent',
+  EOD_FILTERS: 'end-of-day-picker-settings',
+  EOD_SCHEMES: 'end-of-day-picker-schemes',
+  EOD_RECENT: 'end-of-day-picker-recent',
 } as const;
 
 // 默认设置
@@ -463,46 +464,6 @@ export function updateSettings(updates: Partial<AppSettings>): void {
   saveSettings(settings);
 }
 
-// ========== 热力图配置 ==========
-
-/**
- * 获取热力图配置
- */
-export function getHeatmapConfig(): HeatmapConfig {
-  return getSettings().heatmapConfig;
-}
-
-/**
- * 保存热力图配置
- */
-export function saveHeatmapConfig(config: HeatmapConfig): void {
-  const settings = getSettings();
-  saveSettings({
-    ...settings,
-    heatmapConfig: config,
-  });
-}
-
-// ========== 指标配置 ==========
-
-/**
- * 获取指标配置
- */
-export function getIndicatorConfig(): IndicatorConfig {
-  return getSettings().indicatorConfig;
-}
-
-/**
- * 保存指标配置
- */
-export function saveIndicatorConfig(config: IndicatorConfig): void {
-  const settings = getSettings();
-  saveSettings({
-    ...settings,
-    indicatorConfig: config,
-  });
-}
-
 // ========== 表格列配置 ==========
 
 /**
@@ -523,6 +484,24 @@ export function saveTableColumns(pageKey: string, columns: ColumnConfig[]): void
   const allConfigs = safeJsonParse<Record<string, ColumnConfig[]>>(data, {}, isPlainObject);
   allConfigs[pageKey] = columns;
   safeSetItem(STORAGE_KEYS.TABLE_COLUMNS, allConfigs);
+}
+
+// ========== 尾盘选股页面状态 ==========
+
+const EOD_KEY_MAP = {
+  filters: STORAGE_KEYS.EOD_FILTERS,
+  schemes: STORAGE_KEYS.EOD_SCHEMES,
+  recent: STORAGE_KEYS.EOD_RECENT,
+} as const;
+
+export function getEodPickerState<T>(kind: keyof typeof EOD_KEY_MAP, fallback: T): T {
+  const data = localStorage.getItem(EOD_KEY_MAP[kind]);
+  const isValid = kind === 'filters' ? isPlainObject : Array.isArray;
+  return safeJsonParse(data, fallback, isValid);
+}
+
+export function saveEodPickerState(kind: keyof typeof EOD_KEY_MAP, value: unknown): boolean {
+  return safeSetItem(EOD_KEY_MAP[kind], value);
 }
 
 // ========== 搜索历史 ==========

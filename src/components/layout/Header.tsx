@@ -106,7 +106,6 @@ export function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 搜索
   const doSearch = useCallback(async (kw: string) => {
     if (!kw.trim()) {
       setResults([]);
@@ -130,7 +129,6 @@ export function Header() {
     }
   }, []);
 
-  // 输入变化
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setKeyword(value);
