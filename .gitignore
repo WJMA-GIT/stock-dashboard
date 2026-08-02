@@ -18,6 +18,11 @@ dist
 dist-ssr
 *.local
 
+# Local env — vite.config.ts 用空前缀 loadEnv，会读取 .env 里的 GRAFANA_FARO_API_KEY
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
