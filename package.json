@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@10.34.4",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -37,5 +38,9 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"],
+    "ignoredBuiltDependencies": ["protobufjs"]
   }
 }

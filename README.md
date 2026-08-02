@@ -51,23 +51,23 @@
 
 ## 开发
 ```bash
-yarn install
-yarn dev
+pnpm install
+pnpm dev
 ```
 
 ## 构建
 ```bash
-yarn build
+pnpm build
 ```
 
 ## Lint
 ```bash
-yarn lint
+pnpm lint
 ```
 
 ## 本地预览
 ```bash
-yarn preview
+pnpm preview
 ```
 
 ## 说明
