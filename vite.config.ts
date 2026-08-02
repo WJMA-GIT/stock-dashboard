@@ -11,7 +11,9 @@ export default defineConfig(({ mode }) => {
   // API Key 优先从系统环境变量读取（GitHub Actions），其次从 .env 文件读取
   const grafanaApiKey = process.env.GRAFANA_FARO_API_KEY || env.GRAFANA_FARO_API_KEY
   
-  const defaultBase = mode === 'production' ? '/stock-dashboard/' : '/'
+  // 默认根路径：GH Pages 的子路径由 workflow 显式注入 VITE_BASE_URL，
+  // 缺省为 '/' 可让漏配的部署退化为根路径部署，而非资源全部 404
+  const defaultBase = '/'
 
   // 构建插件列表
   const plugins: PluginOption[] = [react()]
@@ -32,7 +34,6 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    // 优先使用 VITE_BASE_URL 环境变量，否则根据环境设置基础路径
     base: process.env.VITE_BASE_URL || env.VITE_BASE_URL || defaultBase,
     plugins,
     resolve: {

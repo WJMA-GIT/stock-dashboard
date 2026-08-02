@@ -70,6 +70,23 @@ pnpm lint
 pnpm preview
 ```
 
+## 部署
+
+项目同时部署在两个平台，`base` 路径统一由 `VITE_BASE_URL` 环境变量控制，缺省为 `/`。
+
+### GitHub Pages
+`.github/workflows/deploy-pages.yml`，push 到 `main` 自动触发。workflow 注入 `VITE_BASE_URL=/stock-dashboard/`，`postbuild` 复制出的 `dist/404.html` 用于 SPA 深链回退。
+
+- 地址：https://chengzuopeng.github.io/stock-dashboard/
+
+### EdgeOne Pages
+构建参数与 SPA 回退规则写在根目录 `edgeone.json`，控制台只需把框架预设设为「其他」、根目录设为 `/`。部署在自定义域名根路径，无需配置 `VITE_BASE_URL`。
+
+- 地址：https://stock-dashboard.linkdiary.cn
+
+### Sourcemap 上传
+两个平台均可选配 `GRAFANA_FARO_API_KEY` 环境变量，用于把 sourcemap 上传到 Grafana Faro（GitHub Actions 取自 `secrets.GRAFANA_SOURCEMAP_TOKEN`）。未配置时构建照常，仅线上错误堆栈不还原。
+
 ## 说明
 - 代码与页面以 A 股为主要对象，部分模块可扩展到港股/美股
 - 若需修改刷新频率或缓存策略，可在 `src/services/sdk.ts` 调整
