@@ -18,6 +18,89 @@
   gap: var(--spacing-xl);
 }
 
+.flowSections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.flowColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-xl);
+}
+
+.flowColumn {
+  min-width: 0;
+}
+
+.flowHeader {
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+}
+
+.flowList {
+  display: flex;
+  flex-direction: column;
+}
+
+.flowRow {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: inherit;
+  text-align: left;
+  border-bottom: 1px solid var(--border-secondary);
+  transition: background var(--transition-fast);
+}
+
+.flowRow:hover {
+  background: var(--bg-tertiary);
+}
+
+.flowName,
+.flowValue {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.flowName > span:first-child {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flowName > span:last-child {
+  color: var(--text-tertiary);
+}
+
+.flowName > span:last-child,
+.flowValue > span:last-child {
+  font-size: var(--font-size-xs);
+}
+
+.flowValue {
+  align-items: flex-end;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.flowEmpty {
+  padding: var(--spacing-xl);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
 /* 表格 */
 .rankTable {
   display: flex;
@@ -140,6 +223,10 @@
 }
 
 @media (max-width: 768px) {
+  .flowColumns {
+    grid-template-columns: 1fr;
+  }
+
   .tableHeader,
   .tableRow {
     grid-template-columns: 40px 1fr 70px 70px;

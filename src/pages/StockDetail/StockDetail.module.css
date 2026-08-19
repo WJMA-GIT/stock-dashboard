@@ -67,6 +67,25 @@
   color: var(--text-tertiary);
 }
 
+.boardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+}
+
+.boardMeta span {
+  max-width: 440px;
+  padding: 2px 7px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .priceSection {
   display: flex;
   align-items: baseline;
@@ -89,7 +108,71 @@
 
 .actions {
   display: flex;
+  align-items: center;
   gap: var(--spacing-sm);
+  margin-left: auto;
+}
+
+.inlineAlert {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.inlineAlert select,
+.inlineAlert input {
+  height: 32px;
+  padding: 0 var(--spacing-sm);
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+}
+
+.inlineAlert input {
+  width: 92px;
+  font-family: var(--font-mono);
+}
+
+.alertDetails summary {
+  padding: 7px 9px;
+  color: var(--color-accent);
+  background: var(--color-accent-bg);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  list-style: none;
+}
+
+.compactAlertList {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  padding: var(--spacing-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.compactAlertList > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.compactAlertList button {
+  display: grid;
+  place-items: center;
+  color: var(--text-tertiary);
 }
 
 /* 行情网格 */
@@ -142,6 +225,89 @@
 
 .chartContainerLarge {
   height: 640px;
+}
+
+.structureChart {
+  height: 300px;
+}
+
+.chipChart {
+  height: 240px;
+}
+
+.timelineControls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.boardSearch {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  height: 32px;
+  padding: 0 var(--spacing-sm);
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+
+.boardSearch:focus-within {
+  border-color: var(--border-focus);
+}
+
+.boardSearch input {
+  width: 132px;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-size: var(--font-size-xs);
+}
+
+.chartDate {
+  color: var(--text-tertiary);
+  font: var(--font-size-xs) var(--font-mono);
+}
+
+.chipStats,
+.marginSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm) var(--spacing-xl);
+  margin-bottom: var(--spacing-md);
+}
+
+.chipStats span,
+.marginSummary span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.chipStats strong,
+.marginSummary strong {
+  color: var(--text-primary);
+  font: 600 var(--font-size-sm) var(--font-mono);
+}
+
+.marginSummary small {
+  align-self: flex-end;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.marketBadge {
+  padding: 4px 10px;
+  background: var(--bg-tertiary);
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
 }
 
 /* K线控制 */
@@ -370,137 +536,21 @@
 .sellSmallDot { background: rgba(34, 197, 94, 0.5); }
 .sellLargeDot { background: var(--color-fall); }
 
-.dividendList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.dividendItem {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--border-secondary);
-}
-
-.dividendItem:last-child {
-  padding-bottom: 0;
-  border-bottom: none;
-}
-
-.dividendHeader,
-.dividendMeta {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--spacing-sm);
-  font-size: var(--font-size-xs);
-}
-
-.dividendReport {
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-}
-
-.dividendProgress {
-  color: var(--color-accent);
-}
-
-.dividendDesc {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.dividendMeta {
-  color: var(--text-tertiary);
-}
-
-.dividendEmpty {
+.emptyText {
   font-size: var(--font-size-sm);
   color: var(--text-tertiary);
-}
-
-.alertEditor {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
-}
-
-.alertInputs {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.alertSelect,
-.alertInput {
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-}
-
-.alertSelect {
-  flex: 1;
-}
-
-.alertInput {
-  width: 120px;
-  font-family: var(--font-mono);
-}
-
-.alertList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.alertItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm);
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-md);
-}
-
-.alertInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.alertLabel {
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-}
-
-.alertMeta {
-  font-size: var(--font-size-xs);
-  color: var(--text-tertiary);
-}
-
-.alertDelete {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  color: var(--text-tertiary);
-  border-radius: var(--radius-sm);
-}
-
-.alertDelete:hover {
-  color: var(--color-error);
-  background: var(--color-fall-bg);
 }
 
 /* 响应式 */
 @media (max-width: 1200px) {
+  .header {
+    flex-wrap: wrap;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
   .mainGrid {
     grid-template-columns: 1fr;
   }
@@ -528,5 +578,11 @@
   .actions {
     width: 100%;
     margin-top: var(--spacing-sm);
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .inlineAlert {
+    flex-wrap: wrap;
   }
 }

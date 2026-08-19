@@ -25,6 +25,21 @@ const StockDetail = lazy(() =>
 const EndOfDayPicker = lazy(() =>
   import('@/pages/EndOfDayPicker').then((mod) => ({ default: mod.EndOfDayPicker }))
 );
+const USMarket = lazy(() =>
+  import('@/pages/Markets').then((mod) => ({ default: mod.USMarket }))
+);
+const DragonTiger = lazy(() =>
+  import('@/pages/DragonTiger').then((mod) => ({ default: mod.DragonTiger }))
+);
+const MarketChanges = lazy(() =>
+  import('@/pages/MarketChanges').then((mod) => ({ default: mod.MarketChanges }))
+);
+const LimitUpLadder = lazy(() =>
+  import('@/pages/LimitUpLadder').then((mod) => ({ default: mod.LimitUpLadder }))
+);
+const Futures = lazy(() =>
+  import('@/pages/Futures').then((mod) => ({ default: mod.Futures }))
+);
 
 function withSuspense(element: ReactNode) {
   return (
@@ -65,12 +80,32 @@ const browserRouter = createBrowserRouter(
           element: withSuspense(<Rankings />),
         },
         {
+          path: 'limit-up-ladder',
+          element: withSuspense(<LimitUpLadder />),
+        },
+        {
           path: 'boards',
           element: withSuspense(<Boards />),
         },
         {
           path: 'boards/:type/:code',
           element: withSuspense(<BoardDetailRoute />),
+        },
+        {
+          path: 'us-market',
+          element: withSuspense(<USMarket />),
+        },
+        {
+          path: 'dragon-tiger',
+          element: withSuspense(<DragonTiger />),
+        },
+        {
+          path: 'market-changes',
+          element: withSuspense(<MarketChanges />),
+        },
+        {
+          path: 'futures',
+          element: withSuspense(<Futures />),
         },
         {
           path: 'watchlist',

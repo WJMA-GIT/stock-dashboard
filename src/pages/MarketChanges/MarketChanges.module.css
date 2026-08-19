@@ -1,0 +1,38 @@
+.page { display: flex; flex-direction: column; gap: var(--spacing-xl); }
+.header { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-lg); padding: var(--spacing-xl); background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: var(--radius-xl); }
+.title { display: flex; align-items: center; gap: var(--spacing-sm); font-size: 22px; color: var(--text-primary); }
+.subtitle { margin-top: var(--spacing-xs); font-size: var(--font-size-sm); color: var(--text-secondary); }
+.summaryGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-lg); }
+.summaryValue { display: block; font-family: var(--font-mono); font-size: var(--font-size-2xl); color: var(--text-primary); }
+.summaryUnit { display: flex; align-items: center; gap: var(--spacing-xs); margin-top: var(--spacing-xs); font-size: var(--font-size-xs); color: var(--text-tertiary); }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); padding: var(--spacing-lg); border-bottom: 1px solid var(--border-secondary); }
+.searchField { display: flex; align-items: center; gap: var(--spacing-sm); min-width: 240px; height: 36px; padding: 0 var(--spacing-md); color: var(--text-tertiary); background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: var(--radius-md); }
+.searchField:focus-within { border-color: var(--border-focus); }
+.searchField input { width: 100%; color: var(--text-primary); }
+.searchField input::placeholder { color: var(--text-muted); }
+.typeFilters { display: flex; gap: var(--spacing-sm); padding: var(--spacing-md) var(--spacing-lg); overflow-x: auto; border-bottom: 1px solid var(--border-secondary); }
+.typeButton { flex: 0 0 auto; padding: 6px 12px; font-size: var(--font-size-xs); color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border-primary); border-radius: 999px; transition: all var(--transition-fast); }
+.typeButton:hover { color: var(--text-primary); border-color: var(--border-strong); }
+.typeButton.active { color: var(--color-accent); background: var(--color-accent-bg); border-color: var(--color-accent); }
+.streamHeader, .changeRow { display: grid; grid-template-columns: 90px minmax(140px, .8fr) 120px minmax(220px, 2fr); align-items: center; gap: var(--spacing-lg); }
+.streamHeader { padding: 10px var(--spacing-lg); font-size: var(--font-size-xs); color: var(--text-tertiary); background: var(--bg-tertiary); }
+.changeRow { width: 100%; padding: var(--spacing-md) var(--spacing-lg); color: var(--text-primary); text-align: left; border-bottom: 1px solid var(--border-secondary); transition: background var(--transition-fast); }
+.changeRow:hover { background: var(--bg-tertiary); }
+.changeRow time { font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--text-secondary); }
+.stock { display: flex; flex-direction: column; min-width: 0; }
+.stock strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stock small { font-family: var(--font-mono); color: var(--text-tertiary); }
+.changeTag { justify-self: start; padding: 3px 8px; font-size: var(--font-size-xs); border-radius: var(--radius-sm); }
+.changeTag.up { color: var(--color-rise); background: var(--color-rise-bg); }
+.changeTag.down { color: var(--color-fall); background: var(--color-fall-bg); }
+.info { overflow: hidden; font-size: var(--font-size-sm); color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+.footer { display: flex; justify-content: space-between; padding: 10px var(--spacing-lg); font-size: var(--font-size-xs); color: var(--text-tertiary); background: var(--bg-tertiary); }
+
+@media (max-width: 768px) {
+  .header, .toolbar { align-items: stretch; flex-direction: column; }
+  .summaryGrid { grid-template-columns: 1fr; }
+  .searchField { min-width: 0; }
+  .streamHeader { display: none; }
+  .changeRow { grid-template-columns: 72px 1fr auto; gap: var(--spacing-sm); }
+  .info { grid-column: 1 / -1; white-space: normal; }
+}

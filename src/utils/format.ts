@@ -115,6 +115,17 @@ export function formatYuanAmount(value: number | null | undefined): string {
   return `${sign}${absValue.toFixed(0)}元`;
 }
 
+/** 格式化美元金额 */
+export function formatDollarAmount(value: number | null | undefined): string {
+  if (value === null || value === undefined || isNaN(value)) return '--';
+  return new Intl.NumberFormat('zh-CN', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'compact',
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 /**
  * 格式化通用大数（非金额）
  */

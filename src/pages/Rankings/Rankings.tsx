@@ -2,18 +2,22 @@
  * 榜单页面
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, BarChart2, RefreshCw } from 'lucide-react';
 import { Card, Tabs, Loading } from '@/components/common';
-import { useBoardData } from '@/contexts';
+import { useAppSettings, useBoardData } from '@/contexts';
+import { usePolling } from '@/hooks';
+import { getFundFlowRank, getSectorFundFlowRank } from '@/services/sdk';
 import {
   formatPercent,
   formatTurnover,
+  formatYuanAmount,
   getChangeColorClass,
 } from '@/utils/format';
-import type { IndustryBoard } from 'stock-sdk';
+import type { FundFlowRankItem, IndustryBoard, SectorFundFlowItem } from 'stock-sdk';
+import { splitFundFlowRanks } from './fundFlowRanking';
 import styles from './Rankings.module.css';
 
 // 榜单类型
@@ -48,8 +52,29 @@ function sortBoards(list: IndustryBoard[], rankType: SortKey): IndustryBoard[] {
 
 export function Rankings() {
   const navigate = useNavigate();
+  const { getRefreshInterval } = useAppSettings();
   const { industryList, conceptList, loading } = useBoardData();
   const [rankType, setRankType] = useState<SortKey>('rise');
+  const [industryFundFlows, setIndustryFundFlows] = useState<SectorFundFlowItem[]>([]);
+  const [conceptFundFlows, setConceptFundFlows] = useState<SectorFundFlowItem[]>([]);
+  const [stockFundFlows, setStockFundFlows] = useState<FundFlowRankItem[]>([]);
+
+  const fetchFundFlows = useCallback(async () => {
+    const [industry, concept, stocks] = await Promise.all([
+      getSectorFundFlowRank({ indicator: 'today', sectorType: 'industry' }),
+      getSectorFundFlowRank({ indicator: 'today', sectorType: 'concept' }),
+      getFundFlowRank({ indicator: 'today' }),
+    ]);
+    setIndustryFundFlows(industry);
+    setConceptFundFlows(concept);
+    setStockFundFlows(stocks);
+  }, []);
+
+  const { isLoading: fundFlowLoading } = usePolling(fetchFundFlows, {
+    interval: Math.max(getRefreshInterval('list') * 4, 60000),
+    pauseOnHidden: true,
+    immediate: true,
+  });
 
   const sections = useMemo(
     () => [
@@ -59,8 +84,36 @@ export function Rankings() {
     [industryList, conceptList, rankType]
   );
 
+  const fundFlowSections = useMemo(
+    () => [
+      {
+        title: '行业板块资金流',
+        type: 'industry' as const,
+        ...splitFundFlowRanks(industryFundFlows),
+      },
+      {
+        title: '概念板块资金流',
+        type: 'concept' as const,
+        ...splitFundFlowRanks(conceptFundFlows),
+      },
+      {
+        title: '主力净流入',
+        type: 'stock' as const,
+        ...splitFundFlowRanks(stockFundFlows),
+      },
+    ],
+    [conceptFundFlows, industryFundFlows, stockFundFlows]
+  );
+
   const handleBoardClick = (code: string, type: 'industry' | 'concept') => {
     navigate(`/boards/${type}/${code}`);
+  };
+
+  const handleFundFlowClick = (
+    code: string,
+    type: 'industry' | 'concept' | 'stock'
+  ) => {
+    navigate(type === 'stock' ? `/s/${code}` : `/boards/${type}/${code}`);
   };
 
   if (loading) {
@@ -125,6 +178,55 @@ export function Rankings() {
                   </motion.div>
                 ))}
               </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className={styles.flowSections}>
+        {fundFlowSections.map((section) => (
+          <Card key={section.type} title={section.title} padding="sm">
+            <div className={styles.flowColumns}>
+              {[
+                { key: 'inflow', title: '净流入最多', items: section.inflows },
+                { key: 'outflow', title: '净流出最多', items: section.outflows },
+              ].map((column) => (
+                <div key={column.key} className={styles.flowColumn}>
+                  <div className={styles.flowHeader}>{column.title}</div>
+                  {column.items.length === 0 && fundFlowLoading ? (
+                    <Loading size="md" />
+                  ) : column.items.length === 0 ? (
+                    <div className={styles.flowEmpty}>暂无数据</div>
+                  ) : (
+                    <div className={styles.flowList}>
+                      {column.items.map((item, index) => (
+                        <button
+                          key={item.code}
+                          type="button"
+                          className={styles.flowRow}
+                          onClick={() => handleFundFlowClick(item.code, section.type)}
+                        >
+                          <span className={`${styles.rankNum} ${index < 3 ? styles.top3 : ''}`}>
+                            {index + 1}
+                          </span>
+                          <span className={styles.flowName}>
+                            <span>{item.name}</span>
+                            <span>{item.code}</span>
+                          </span>
+                          <span className={styles.flowValue}>
+                            <span className={getChangeColorClass(item.mainNetInflow)}>
+                              {formatYuanAmount(item.mainNetInflow)}
+                            </span>
+                            <span className={getChangeColorClass(item.mainNetInflowPercent)}>
+                              {formatPercent(item.mainNetInflowPercent)}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </Card>
         ))}

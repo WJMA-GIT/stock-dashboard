@@ -2,15 +2,18 @@
  * Stock SDK 服务层
  * 封装 SDK 调用，提供缓存与错误处理
  *
- * 单位契约：经本层出口的金额字段统一为——市值:亿元、成交额/资金流:万元。
+ * 单位契约：经本层 A 股出口的金额字段统一为——市值:亿元、成交额/资金流:万元。
  * 东财板块接口原样透传 f20/f6（单位:元），在本层归一；腾讯 FullQuote.amount(万)、
- * totalMarketCap(亿)、fundFlow(万) 原生即符合契约，直接透传。页面不得再自行换算。
+ * totalMarketCap(亿)、fundFlow(万) 原生即符合契约，直接透传。全球市场保留源币种。
  */
 
 import { StockSDK } from 'stock-sdk';
+import { calcChipDistribution } from 'stock-sdk/indicators';
 import type { CacheItem } from '@/types';
 import type { DividendDetail, SearchResult as SDKSearchResult } from 'stock-sdk';
 import { normalizeStockCode } from '@/utils/format';
+import { getComparableTradingTime, sumMinuteAmount } from './marketAmountComparison';
+import { parseStockBoardMembership, type StockBoardRef } from './stockBoardMembership';
 
 export type SearchEntityType = 'stock' | 'industry' | 'concept' | 'unsupported';
 
@@ -105,6 +108,7 @@ const DEFAULT_TTL = {
   blockTrade: 3600000, // 大宗交易 1h
   margin: 21600000, // 融资融券 6h
   marketSnapshot: 60000, // 全市场快照 60s（约 10+ 请求/次，Dashboard/Scanner/analysis 共享）
+  globalMarket: 30000, // 海外行情 30s
 };
 
 function normalizeSearchResult(item: SDKSearchResult): AppSearchResult {
@@ -244,6 +248,85 @@ export async function getAllAShareQuotes(options?: {
   return withCache(key, DEFAULT_TTL.marketSnapshot, () => sdk.batch.cn(options));
 }
 
+/** 获取指定美股/指数/ETF 行情（金额保留美元口径） */
+export async function getUSQuotes(codes: string[]) {
+  const key = getCacheKey('getUSQuotes', codes);
+  return withCache(key, DEFAULT_TTL.globalMarket, () => sdk.quotes.us(codes));
+}
+
+/** 获取全球期货实时行情 */
+export async function getGlobalFuturesSpot() {
+  const key = getCacheKey('getGlobalFuturesSpot');
+  return withCache(key, DEFAULT_TTL.globalMarket, () =>
+    sdk.futures.globalSpot({ pageSize: 1000 })
+  );
+}
+
+/** 获取美股当前交易阶段 */
+export function getUSMarketStatus() {
+  return sdk.calendar.marketStatus('US');
+}
+
+/**
+ * 沪深两市当前与上一交易日同刻成交额对比。
+ * 指数分钟成交额为逐分钟值，汇总后换算为万元，与 Dashboard 金额单位一致。
+ */
+export async function getMarketAmountComparison(now = new Date()) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(now)
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value])
+  );
+  const today = `${parts.year}-${parts.month}-${parts.day}`;
+  const isTradingToday = await sdk.calendar.isTradingDay(today);
+  const currentDate = isTradingToday ? today : await sdk.calendar.prevTradingDay(today);
+  const previousDate = await sdk.calendar.prevTradingDay(currentDate);
+  const comparisonTime = isTradingToday
+    ? getComparableTradingTime(Number(parts.hour), Number(parts.minute))
+    : '15:00';
+
+  if (!comparisonTime) {
+    return { currentAmount: null, previousAmount: null, difference: null, comparisonTime };
+  }
+
+  const key = getCacheKey('getMarketAmountComparison', currentDate, previousDate, comparisonTime);
+  return withCache(key, DEFAULT_TTL.fundFlow, async () => {
+    const options = {
+      period: '1' as const,
+      startDate: previousDate.replaceAll('-', ''),
+      endDate: currentDate.replaceAll('-', ''),
+    };
+    const [shRows, szRows] = await Promise.all([
+      sdk.kline.cnMinute('sh000001', options),
+      sdk.kline.cnMinute('sz399001', options),
+    ]);
+    const currentAmount =
+      (sumMinuteAmount(shRows, currentDate, comparisonTime) +
+        sumMinuteAmount(szRows, currentDate, comparisonTime)) /
+      1e4;
+    const previousAmount =
+      (sumMinuteAmount(shRows, previousDate, comparisonTime) +
+        sumMinuteAmount(szRows, previousDate, comparisonTime)) /
+      1e4;
+
+    return {
+      currentAmount,
+      previousAmount,
+      difference: currentAmount - previousAmount,
+      comparisonTime,
+    };
+  });
+}
+
 // ========== K 线数据 API ==========
 
 /**
@@ -317,6 +400,43 @@ export async function getTodayTimeline(code: string) {
 }
 
 // ========== 板块 API ==========
+
+/** 获取个股所属行业与精确概念（SDK 暂无该元数据端点） */
+export async function getStockBoardMembership(symbol: string) {
+  const normalized = normalizeStockCode(symbol);
+  const code = normalized.replace(/\D/g, '').slice(-6);
+  const market = normalized.startsWith('sh') ? 'SH' : normalized.startsWith('bj') ? 'BJ' : 'SZ';
+  const key = getCacheKey('getStockBoardMembership', code, market);
+  return withCache(key, DEFAULT_TTL.boardList, async () => {
+    const params = new URLSearchParams({
+      reportName: 'RPT_F10_CORETHEME_BOARDTYPE',
+      columns: 'ALL',
+      filter: `(SECUCODE="${code}.${market}")`,
+      pageNumber: '1',
+      pageSize: '200',
+    });
+    const response = await fetch(`https://datacenter-web.eastmoney.com/api/data/v1/get?${params}`, {
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw new Error(`Board metadata request failed: ${response.status}`);
+    const payload = await response.json() as { result?: { data?: Parameters<typeof parseStockBoardMembership>[0] } };
+    return parseStockBoardMembership(payload.result?.data ?? []);
+  });
+}
+
+export async function getBoardOptions(): Promise<StockBoardRef[]> {
+  const [industries, concepts] = await Promise.all([getIndustryList(), getConceptList()]);
+  return [
+    ...industries.map((item) => ({ code: item.code, name: item.name, type: 'industry' as const })),
+    ...concepts.map((item) => ({ code: item.code, name: item.name, type: 'concept' as const })),
+  ];
+}
+
+export async function getBoardMinuteTrend(board: StockBoardRef, period: '1' | '5' | '15' | '30' | '60') {
+  return board.type === 'industry'
+    ? getIndustryMinuteKline(board.code, { period })
+    : getConceptMinuteKline(board.code, { period });
+}
 
 // 东财板块口径归一：f20(元)→亿、f6(元)→万，对齐本层单位契约
 function normalizeBoardUnits<T extends { totalMarketCap: number | null }>(board: T): T {
@@ -627,6 +747,44 @@ export async function getDragonTigerDetail(options: {
   return withCache(key, DEFAULT_TTL.dragonTiger, () => sdk.dragonTiger.detail(options));
 }
 
+/** 获取最近交易日筹码分布，最后一日附带筹码峰直方图 */
+export async function getChipDistribution(symbol: string) {
+  const key = getCacheKey('getChipDistribution', symbol);
+  return withCache(key, DEFAULT_TTL.historyKline, async () =>
+    calcChipDistribution(
+      await sdk.kline.cn(symbol, { period: 'daily', adjust: 'qfq' }),
+      { range: 120, tail: 7, includeHistogram: 'last' }
+    )
+  );
+}
+
+/** 获取单只股票指定日期的龙虎榜席位明细 */
+export async function getDragonTigerSeatDetail(symbol: string, date: string) {
+  const key = getCacheKey('getDragonTigerSeatDetail', { symbol, date });
+  return withCache(key, DEFAULT_TTL.dragonTiger, () =>
+    sdk.dragonTiger.seatDetail(symbol, date)
+  );
+}
+
+/** 获取龙虎榜个股统计 */
+export async function getDragonTigerStockStats(
+  period: '1month' | '3month' | '6month' | '1year' = '1month'
+) {
+  const key = getCacheKey('getDragonTigerStockStats', period);
+  return withCache(key, DEFAULT_TTL.dragonTiger, () => sdk.dragonTiger.stockStats(period));
+}
+
+/** 获取龙虎榜机构买卖明细 */
+export async function getDragonTigerInstitution(options: {
+  startDate: string;
+  endDate: string;
+}) {
+  const key = getCacheKey('getDragonTigerInstitution', options);
+  return withCache(key, DEFAULT_TTL.dragonTiger, () =>
+    sdk.dragonTiger.institution(options)
+  );
+}
+
 /**
  * 获取大宗交易明细
  */
@@ -644,6 +802,30 @@ export async function getBlockTradeDetail(options?: {
 export async function getMarginAccountInfo() {
   const key = getCacheKey('getMarginAccountInfo');
   return withCache(key, DEFAULT_TTL.margin, () => sdk.margin.accountInfo());
+}
+
+/** 获取个股最近 N 个交易日的融资融券数据 */
+export async function getMarginTargetHistory(symbol: string, days = 7) {
+  const code = normalizeStockCode(symbol).replace(/\D/g, '').slice(-6);
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const calendar = await getTradingCalendar();
+  const dates = calendar.filter((date) => date <= today).slice(-days);
+  const lists = await Promise.all(
+    dates.map((date) => {
+      const compactDate = date.replaceAll('-', '');
+      const key = getCacheKey('getMarginTargetList', compactDate);
+      return withCache(key, DEFAULT_TTL.margin, () => sdk.margin.targetList(compactDate));
+    })
+  );
+
+  return lists
+    .flatMap((items) => items.filter((item) => item.code.replace(/\D/g, '').slice(-6) === code))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // ========== 搜索 API ==========

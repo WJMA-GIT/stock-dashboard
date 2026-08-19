@@ -12,10 +12,10 @@ import { useBoardData, useAppSettings } from '@/contexts';
 import {
   getAllAShareQuotes,
   getFullQuotes,
-  getFundFlowRank,
+  getMarketAmountComparison,
   getMarketFundFlow,
   getNorthboundFlowSummary,
-  getSectorFundFlowRank,
+  getUSQuotes,
 } from '@/services/sdk';
 import { getAllWatchlistCodes } from '@/services/storage';
 import { isLimitDown, isLimitUp } from '@/services/analysis';
@@ -39,6 +39,8 @@ const MAIN_INDICES = [
   'sh000016', // 上证50
 ];
 
+const US_INDICES = ['DJI', 'INX', 'IXIC'];
+
 // 榜单类型
 const RANKING_TABS = [
   { key: 'rise', label: '涨幅榜' },
@@ -58,8 +60,8 @@ interface MarketSummary {
 
 type MarketFundFlowRows = Awaited<ReturnType<typeof getMarketFundFlow>>;
 type NorthboundSummaryRows = Awaited<ReturnType<typeof getNorthboundFlowSummary>>;
-type SectorFundFlowRows = Awaited<ReturnType<typeof getSectorFundFlowRank>>;
-type FundFlowRankRows = Awaited<ReturnType<typeof getFundFlowRank>>;
+type MarketAmountComparison = Awaited<ReturnType<typeof getMarketAmountComparison>>;
+type USQuotes = Awaited<ReturnType<typeof getUSQuotes>>;
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -70,17 +72,15 @@ export function Dashboard() {
 
   // 本地数据状态
   const [indices, setIndices] = useState<FullQuote[]>([]);
+  const [usIndices, setUSIndices] = useState<USQuotes>([]);
+  const [usIndicesError, setUSIndicesError] = useState(false);
   const [watchlistQuotes, setWatchlistQuotes] = useState<FullQuote[]>([]);
   const [marketQuotes, setMarketQuotes] = useState<FullQuote[]>([]);
+  const [amountComparison, setAmountComparison] = useState<MarketAmountComparison | null>(null);
   const [marketFundFlowHistory, setMarketFundFlowHistory] =
     useState<MarketFundFlowRows>([]);
   const [northboundSummary, setNorthboundSummary] =
     useState<NorthboundSummaryRows>([]);
-  const [industryFundFlowRanks, setIndustryFundFlowRanks] =
-    useState<SectorFundFlowRows>([]);
-  const [conceptFundFlowRanks, setConceptFundFlowRanks] =
-    useState<SectorFundFlowRows>([]);
-  const [fundFlowRanks, setFundFlowRanks] = useState<FundFlowRankRows>([]);
   const [rankingTab, setRankingTab] = useState('rise');
   const [boardTab, setBoardTab] = useState<'industry' | 'concept'>('industry');
   const [initialLoading, setInitialLoading] = useState(true);
@@ -111,38 +111,35 @@ export function Dashboard() {
   }, []);
 
   const fetchMarketOverview = useCallback(async () => {
+    const [quotesResult, comparisonResult] = await Promise.allSettled([
+      getAllAShareQuotes({ batchSize: 500, concurrency: 4 }),
+      getMarketAmountComparison(),
+    ]);
+    if (quotesResult.status === 'fulfilled') setMarketQuotes(quotesResult.value);
+    else console.error('Dashboard market overview error:', quotesResult.reason);
+    if (comparisonResult.status === 'fulfilled') setAmountComparison(comparisonResult.value);
+    else console.error('Dashboard amount comparison error:', comparisonResult.reason);
+  }, []);
+
+  const fetchUSIndices = useCallback(async () => {
     try {
-      const quotes = await getAllAShareQuotes({
-        batchSize: 500,
-        concurrency: 4,
-      });
-      setMarketQuotes(quotes);
+      setUSIndices(await getUSQuotes(US_INDICES));
+      setUSIndicesError(false);
     } catch (error) {
-      console.error('Dashboard market overview error:', error);
+      console.error('Dashboard US indices error:', error);
+      setUSIndicesError(true);
     }
   }, []);
 
   const fetchMarketInsights = useCallback(async () => {
     try {
-      const [
-        marketFundFlowData,
-        northboundSummaryData,
-        industryFundFlowData,
-        conceptFundFlowData,
-        fundFlowRankData,
-      ] = await Promise.all([
+      const [marketFundFlowData, northboundSummaryData] = await Promise.all([
         getMarketFundFlow(),
         getNorthboundFlowSummary(),
-        getSectorFundFlowRank({ indicator: 'today', sectorType: 'industry' }),
-        getSectorFundFlowRank({ indicator: 'today', sectorType: 'concept' }),
-        getFundFlowRank({ indicator: 'today' }),
       ]);
 
       setMarketFundFlowHistory(marketFundFlowData);
       setNorthboundSummary(northboundSummaryData);
-      setIndustryFundFlowRanks(industryFundFlowData);
-      setConceptFundFlowRanks(conceptFundFlowData);
-      setFundFlowRanks(fundFlowRankData);
     } catch (error) {
       console.error('Dashboard market insights error:', error);
     }
@@ -151,9 +148,10 @@ export function Dashboard() {
   // 初始加载
   useEffect(() => {
     fetchQuoteData();
+    fetchUSIndices();
     fetchMarketOverview();
     fetchMarketInsights();
-  }, [fetchMarketInsights, fetchMarketOverview, fetchQuoteData]);
+  }, [fetchMarketInsights, fetchMarketOverview, fetchQuoteData, fetchUSIndices]);
 
   // 轮询指数和自选数据（优化：只轮询需要实时更新的数据）
   usePolling(fetchQuoteData, {
@@ -164,6 +162,12 @@ export function Dashboard() {
 
   usePolling(fetchMarketOverview, {
     interval: breadthRefreshInterval,
+    enabled: !initialLoading,
+    immediate: false,
+  });
+
+  usePolling(fetchUSIndices, {
+    interval: Math.max(listRefreshInterval, 30000),
     enabled: !initialLoading,
     immediate: false,
   });
@@ -185,8 +189,6 @@ export function Dashboard() {
   };
 
   const currentBoards = boardTab === 'industry' ? industryList : conceptList;
-  const currentFundFlowBoards =
-    boardTab === 'industry' ? industryFundFlowRanks : conceptFundFlowRanks;
   const strongestBoard = currentBoards[0];
   const latestMarketFundFlow = marketFundFlowHistory.at(-1) ?? null;
   const northboundSnapshot =
@@ -248,9 +250,43 @@ export function Dashboard() {
 
   return (
     <div className={styles.dashboard}>
+      <section className={styles.marketSection}>
+        <h2 className={styles.sectionTitle}>美股指数</h2>
+        {usIndices.length > 0 ? (
+          <div className={styles.indices}>
+            {usIndices.map((item, index) => (
+              <motion.div
+                key={item.code}
+                className={`${styles.indexCard} ${styles.usIndexCard}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <div className={styles.indexName}>{item.name}</div>
+                <div className={`${styles.indexPrice} ${getChangeColorClass(item.changePercent)}`}>
+                  {formatPrice(item.price)}
+                </div>
+                <div className={styles.indexChange}>
+                  <span className={getChangeColorClass(item.changePercent)}>{formatPercent(item.changePercent)}</span>
+                  <span className={`${styles.indexChangeVal} ${getChangeColorClass(item.change)}`}>
+                    {item.change > 0 ? '+' : ''}{item.change.toFixed(2)}
+                  </span>
+                </div>
+                <div className={styles.indexAmount}>美股实时指数</div>
+              </motion.div>
+            ))}
+          </div>
+        ) : usIndicesError ? (
+          <Card><Empty title="美股指数暂不可用" description="不影响 A 股数据，系统会自动重试" /></Card>
+        ) : (
+          <Loading size="sm" text="加载美股指数..." />
+        )}
+      </section>
+
       {/* 指数卡片 */}
-      <section className={styles.indices}>
-        {indices.map((item, index) => (
+      <section className={styles.marketSection}>
+        <h2 className={styles.sectionTitle}>A 股指数</h2>
+        <div className={styles.indices}>{indices.map((item, index) => (
           <motion.div
             key={item.code}
             className={styles.indexCard}
@@ -276,7 +312,7 @@ export function Dashboard() {
               成交 {formatAmount(item.amount)}
             </div>
           </motion.div>
-        ))}
+        ))}</div>
       </section>
 
       <section className={styles.statsGrid}>
@@ -313,7 +349,12 @@ export function Dashboard() {
               {formatAmount(marketSummary.totalAmount)}
             </div>
             <div className={styles.statMeta}>
-              <span>A 股实时成交额快照</span>
+              <span>较昨日 {amountComparison?.comparisonTime ?? '同刻'}（沪深）</span>
+              <span className={getChangeColorClass(amountComparison?.difference)}>
+                {amountComparison?.difference == null
+                  ? '--'
+                  : `${amountComparison.difference > 0 ? '+' : ''}${formatAmount(amountComparison.difference)}`}
+              </span>
             </div>
           </div>
         </Card>
@@ -466,37 +507,6 @@ export function Dashboard() {
             )}
           </Card>
 
-          <Card title="主力净流入榜">
-            {fundFlowRanks.length === 0 ? (
-              <Loading size="md" />
-            ) : (
-              <div className={styles.rankingList}>
-                {fundFlowRanks.slice(0, 8).map((item, index) => (
-                  <div
-                    key={item.code}
-                    className={styles.rankingItem}
-                    onClick={() => handleStockClick(item.code)}
-                  >
-                    <span className={styles.rankNum}>{index + 1}</span>
-                    <div className={styles.stockInfo}>
-                      <span className={styles.stockName}>{item.name}</span>
-                      <span className={styles.stockCode}>{item.code}</span>
-                    </div>
-                    <div className={styles.stockPrice}>
-                      <span>{formatPrice(item.price)}</span>
-                    </div>
-                    <div
-                      className={`${styles.stockChange} ${getChangeColorClass(
-                        item.mainNetInflow
-                      )}`}
-                    >
-                      {formatYuanAmount(item.mainNetInflow)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
         </div>
 
         {/* 右侧：热点板块 */}
@@ -551,61 +561,6 @@ export function Dashboard() {
             </div>
           </Card>
 
-          <Card
-            title="板块资金流"
-            extra={
-              <Tabs
-                items={[
-                  { key: 'industry', label: '行业' },
-                  { key: 'concept', label: '概念' },
-                ]}
-                activeKey={boardTab}
-                onChange={(key) => setBoardTab(key as 'industry' | 'concept')}
-                size="sm"
-              />
-            }
-          >
-            <div className={styles.boardList}>
-              {currentFundFlowBoards.slice(0, 12).map((item, index) => (
-                <motion.div
-                  key={`${item.code}-flow`}
-                  className={styles.boardItem}
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                  onClick={() => handleBoardClick(item.code, boardTab)}
-                >
-                  <div className={styles.boardLeft}>
-                    <span className={styles.boardRank}>{index + 1}</span>
-                    <div className={styles.boardInfo}>
-                      <span className={styles.boardName}>{item.name}</span>
-                      <span className={styles.boardLeader}>
-                        领流：{item.topStockName || '--'}
-                        {item.topStockCode ? ` · ${item.topStockCode}` : ''}
-                      </span>
-                    </div>
-                  </div>
-                  <div className={styles.boardRight}>
-                    <div
-                      className={`${styles.boardChange} ${getChangeColorClass(
-                        item.mainNetInflow
-                      )}`}
-                    >
-                      {formatYuanAmount(item.mainNetInflow)}
-                    </div>
-                    <div className={styles.boardStats}>
-                      <span className={getChangeColorClass(item.changePercent)}>
-                        {formatPercent(item.changePercent)}
-                      </span>
-                      <span className={getChangeColorClass(item.mainNetInflowPercent)}>
-                        {formatPercent(item.mainNetInflowPercent)}
-                      </span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </Card>
         </div>
       </div>
     </div>

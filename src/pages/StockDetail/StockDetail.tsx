@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Star, StarOff, Bell, Trash2 } from 'lucide-react';
+import { ArrowLeft, Star, StarOff, Bell, Trash2, Search } from 'lucide-react';
 import {
   addIndicators,
   calcDMI,
@@ -15,7 +15,6 @@ import {
   calcSAR,
 } from 'stock-sdk/indicators';
 import type {
-  DividendDetail,
   FundFlow,
   FullQuote,
   HistoryKline,
@@ -24,20 +23,25 @@ import type {
 } from 'stock-sdk';
 import { LazyEChart } from '@/components/charts/LazyEChart';
 import { getChartColors, type ChartColors } from '@/components/charts/chartTheme';
-import { Button, Card, Loading, Tabs, useToast } from '@/components/common';
+import { Button, Card, Empty, Loading, Tabs, useToast } from '@/components/common';
 import { useAppSettings } from '@/contexts';
 import { usePolling, useTheme } from '@/hooks';
 import {
-  getDividendDetail,
+  getBoardMinuteTrend,
+  getBoardOptions,
+  getChipDistribution,
   getFullQuotes,
   getFundFlow,
   getHistoryKline,
   getIndividualFundFlow,
   getMinuteKline,
+  getMarginTargetHistory,
   getNorthboundIndividual,
   getPanelLargeOrder,
+  getStockBoardMembership,
   getTodayTimeline,
 } from '@/services/sdk';
+import { summarizeMarginTrend } from './marginTrend';
 import {
   addAlertRule,
   addToWatchlist,
@@ -67,6 +71,11 @@ import styles from './StockDetail.module.css';
 
 type IndividualFundFlowRows = Awaited<ReturnType<typeof getIndividualFundFlow>>;
 type NorthboundIndividualRows = Awaited<ReturnType<typeof getNorthboundIndividual>>;
+type ChipRows = Awaited<ReturnType<typeof getChipDistribution>>;
+type MarginRows = Awaited<ReturnType<typeof getMarginTargetHistory>>;
+type BoardMembership = Awaited<ReturnType<typeof getStockBoardMembership>>;
+type BoardRef = NonNullable<BoardMembership['industry']>;
+type BoardTrend = Awaited<ReturnType<typeof getBoardMinuteTrend>>;
 
 const KLINE_PERIODS = [
   { key: 'daily', label: '日K' },
@@ -135,22 +144,16 @@ function formatMaybeDate(value: string | null | undefined) {
   return value || '--';
 }
 
-function formatYield(value: number | null | undefined) {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return '--';
-  }
-
-  return `${value.toFixed(2)}%`;
-}
-
 function buildTimelineOption(args: {
   minutePeriod: string;
   timeline: TodayTimelineResponse | null;
   minuteKline: MinuteKlineItem[];
   prevClose: number | undefined;
   colors: ChartColors;
+  boardTrend: BoardTrend;
+  boardName: string;
 }) {
-  const { minutePeriod, timeline, minuteKline, prevClose, colors } = args;
+  const { minutePeriod, timeline, minuteKline, prevClose, colors, boardTrend, boardName } = args;
 
   if (minutePeriod === '1') {
     if (!timeline?.data?.length) {
@@ -164,6 +167,8 @@ function buildTimelineOption(args: {
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
     const range = Math.max(maxPrice - basePrice, basePrice - minPrice) * 1.1;
+    const changePercents = prices.map((price) => basePrice ? (price - basePrice) / basePrice * 100 : 0);
+    const boardChanges = boardChangeSeries(boardTrend, times);
 
     return {
       animation: false,
@@ -174,18 +179,25 @@ function buildTimelineOption(args: {
         axisLine: { lineStyle: { color: colors.borderPrimary } },
         axisLabel: { color: colors.textTertiary, fontSize: 10 },
       },
-      yAxis: {
-        type: 'value',
-        min: basePrice - range,
-        max: basePrice + range,
-        axisLine: { show: false },
-        axisLabel: {
-          color: colors.textTertiary,
-          fontSize: 10,
-          formatter: (value: number) => value.toFixed(2),
+      yAxis: [
+        {
+          type: 'value',
+          min: basePrice - range,
+          max: basePrice + range,
+          axisLine: { show: false },
+          axisLabel: {
+            color: colors.textTertiary,
+            fontSize: 10,
+            formatter: (value: number) => value.toFixed(2),
+          },
+          splitLine: { lineStyle: { color: colors.borderSecondary, type: 'dashed' } },
         },
-        splitLine: { lineStyle: { color: colors.borderSecondary, type: 'dashed' } },
-      },
+        {
+          type: 'value',
+          axisLabel: { color: colors.textTertiary, formatter: '{value}%' },
+          splitLine: { show: false },
+        },
+      ],
       series: [
         {
           name: '价格',
@@ -214,12 +226,32 @@ function buildTimelineOption(args: {
           symbol: 'none',
           lineStyle: { width: 1, color: '#3b82f6', type: 'dashed' },
         },
+        ...(boardChanges.some((value) => value !== null) ? [{
+          name: boardName,
+          type: 'line',
+          yAxisIndex: 1,
+          data: boardChanges,
+          symbol: 'none',
+          lineStyle: { width: 1.5, color: '#f59e0b', type: 'dashed' },
+        }] : []),
       ],
       tooltip: {
         trigger: 'axis',
         backgroundColor: colors.bgElevated,
         borderColor: colors.borderPrimary,
         textStyle: { color: colors.textPrimary, fontSize: 12 },
+        formatter: (params: Array<{ axisValue: string }>) => {
+          const index = times.indexOf(params[0]?.axisValue ?? '');
+          return [
+            params[0]?.axisValue ?? '',
+            `价格 ${formatPrice(prices[index])}`,
+            `均价 ${formatPrice(avgPrices[index])}`,
+            `涨跌幅 ${formatPercent(changePercents[index])}`,
+            ...(boardChanges[index] === null || boardChanges[index] === undefined
+              ? []
+              : [`${boardName} ${formatPercent(boardChanges[index])}`]),
+          ].join('<br/>');
+        },
       },
     };
   }
@@ -230,6 +262,7 @@ function buildTimelineOption(args: {
 
   const times = minuteKline.map((item) => item.time);
   const ohlc = minuteKline.map((item) => [item.open, item.close, item.low, item.high]);
+  const boardChanges = boardChangeSeries(boardTrend, times);
 
   return {
     animation: false,
@@ -240,17 +273,24 @@ function buildTimelineOption(args: {
       axisLine: { lineStyle: { color: colors.borderPrimary } },
       axisLabel: { color: colors.textTertiary, fontSize: 10 },
     },
-    yAxis: {
-      type: 'value',
-      scale: true,
-      axisLine: { show: false },
-      axisLabel: {
-        color: colors.textTertiary,
-        fontSize: 10,
-        formatter: (value: number) => value.toFixed(2),
+    yAxis: [
+      {
+        type: 'value',
+        scale: true,
+        axisLine: { show: false },
+        axisLabel: {
+          color: colors.textTertiary,
+          fontSize: 10,
+          formatter: (value: number) => value.toFixed(2),
+        },
+        splitLine: { lineStyle: { color: colors.borderSecondary, type: 'dashed' } },
       },
-      splitLine: { lineStyle: { color: colors.borderSecondary, type: 'dashed' } },
-    },
+      {
+        type: 'value',
+        axisLabel: { color: colors.textTertiary, formatter: '{value}%' },
+        splitLine: { show: false },
+      },
+    ],
     series: [
       {
         name: `${minutePeriod}分K`,
@@ -263,12 +303,121 @@ function buildTimelineOption(args: {
           borderColor0: colors.fall,
         },
       },
+      ...(boardChanges.some((value) => value !== null) ? [{
+        name: boardName,
+        type: 'line',
+        yAxisIndex: 1,
+        data: boardChanges,
+        symbol: 'none',
+        lineStyle: { width: 1.5, color: '#f59e0b', type: 'dashed' },
+      }] : []),
     ],
     tooltip: {
       trigger: 'axis',
       backgroundColor: colors.bgElevated,
       borderColor: colors.borderPrimary,
       textStyle: { color: colors.textPrimary, fontSize: 12 },
+      formatter: (params: Array<{ axisValue: string }>) => {
+        const index = times.indexOf(params[0]?.axisValue ?? '');
+        const item = minuteKline[index];
+        const changePercent = item && prevClose ? (item.close - prevClose) / prevClose * 100 : null;
+        return [
+          params[0]?.axisValue ?? '',
+          `价格 ${formatPrice(item?.close)}`,
+          `涨跌幅 ${formatPercent(changePercent)}`,
+          ...(boardChanges[index] === null || boardChanges[index] === undefined
+            ? []
+            : [`${boardName} ${formatPercent(boardChanges[index])}`]),
+        ].join('<br/>');
+      },
+    },
+  };
+}
+
+function boardChangeSeries(data: BoardTrend, times: string[]) {
+  const getPrice = (item: BoardTrend[number]) => 'price' in item ? item.price : item.close;
+  const valueByTime = new Map(data.map((item) => [item.time.slice(-5), getPrice(item)]));
+  const base = data.find((item) => getPrice(item) !== null);
+  const basePrice = base ? getPrice(base) ?? 0 : 0;
+  return times.map((time) => {
+    const value = valueByTime.get(time.slice(-5));
+    return value === null || value === undefined || basePrice === 0
+      ? null
+      : (value - basePrice) / basePrice * 100;
+  });
+}
+
+function buildChipOption(data: ChipRows, colors: ChartColors) {
+  const histogram = data.at(-1)?.histogram;
+  if (!histogram?.prices.length) return {};
+  return {
+    animation: false,
+    grid: { left: 58, right: 18, top: 12, bottom: 28 },
+    xAxis: {
+      type: 'value',
+      axisLabel: { color: colors.textTertiary, formatter: (value: number) => `${(value * 100).toFixed(0)}%` },
+      splitLine: { lineStyle: { color: colors.borderSecondary, type: 'dashed' } },
+    },
+    yAxis: {
+      type: 'category',
+      data: histogram.prices.map((price) => price.toFixed(2)),
+      axisLabel: { color: colors.textTertiary, fontSize: 10 },
+      axisLine: { lineStyle: { color: colors.borderPrimary } },
+    },
+    series: [{
+      name: '筹码占比',
+      type: 'bar',
+      data: histogram.ratios,
+      itemStyle: { color: colors.rise, borderRadius: [0, 2, 2, 0] },
+      barMaxWidth: 5,
+    }],
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: colors.bgElevated,
+      borderColor: colors.borderPrimary,
+      textStyle: { color: colors.textPrimary },
+      formatter: (params: Array<{ axisValue: string; value: number }>) =>
+        `价格 ${params[0]?.axisValue ?? '--'}<br/>筹码占比 ${((params[0]?.value ?? 0) * 100).toFixed(2)}%`,
+    },
+  };
+}
+
+function buildMarginOption(data: MarginRows, currentPrice: number, colors: ChartColors) {
+  return {
+    animation: false,
+    grid: { left: 72, right: 18, top: 28, bottom: 32 },
+    legend: { top: 0, textStyle: { color: colors.textTertiary } },
+    xAxis: {
+      type: 'category',
+      data: data.map((item) => item.date.slice(5)),
+      axisLabel: { color: colors.textTertiary },
+      axisLine: { lineStyle: { color: colors.borderPrimary } },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: colors.textTertiary, formatter: (value: number) => formatYuanAmount(value) },
+      splitLine: { lineStyle: { color: colors.borderSecondary, type: 'dashed' } },
+    },
+    series: [
+      {
+        name: '融资净买入',
+        type: 'bar',
+        data: data.map((item) => (item.finBuyAmount ?? 0) - (item.finRepayAmount ?? 0)),
+        itemStyle: { color: colors.rise },
+      },
+      {
+        name: '融券净卖出估值',
+        type: 'bar',
+        data: data.map((item) => -((item.loanSellVolume ?? 0) - (item.loanRepayVolume ?? 0)) * currentPrice),
+        itemStyle: { color: colors.fall },
+      },
+    ],
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: colors.bgElevated,
+      borderColor: colors.borderPrimary,
+      textStyle: { color: colors.textPrimary },
+      valueFormatter: (value: number) => formatYuanAmount(value),
     },
   };
 }
@@ -756,7 +905,17 @@ export function StockDetail() {
     useState<IndividualFundFlowRows>([]);
   const [northboundHoldings, setNorthboundHoldings] =
     useState<NorthboundIndividualRows>([]);
-  const [dividends, setDividends] = useState<DividendDetail[]>([]);
+  const [chipData, setChipData] = useState<ChipRows>([]);
+  const [marginData, setMarginData] = useState<MarginRows>([]);
+  const [chipLoading, setChipLoading] = useState(true);
+  const [marginLoading, setMarginLoading] = useState(true);
+  const [chipError, setChipError] = useState(false);
+  const [marginError, setMarginError] = useState(false);
+  const [boardMembership, setBoardMembership] = useState<BoardMembership>({ industry: null, concepts: [] });
+  const [boardOptions, setBoardOptions] = useState<BoardRef[]>([]);
+  const [selectedBoard, setSelectedBoard] = useState<BoardRef | null>(null);
+  const [boardTrend, setBoardTrend] = useState<BoardTrend>([]);
+  const [boardSearch, setBoardSearch] = useState('');
   const [alerts, setAlerts] = useState(() => getAlertsByCode(normalizedCode));
 
   const [loading, setLoading] = useState(true);
@@ -775,6 +934,54 @@ export function StockDetail() {
   useEffect(() => {
     setInWatchlist(isInWatchlist(normalizedCode));
     setAlerts(getAlertsByCode(normalizedCode));
+  }, [normalizedCode]);
+
+  useEffect(() => {
+    void Promise.allSettled([getStockBoardMembership(normalizedCode), getBoardOptions()]).then(
+      ([membershipResult, optionsResult]) => {
+        if (membershipResult.status === 'fulfilled') {
+          setBoardMembership(membershipResult.value);
+          setSelectedBoard(membershipResult.value.industry);
+          setBoardSearch(membershipResult.value.industry?.name ?? '');
+        }
+        if (optionsResult.status === 'fulfilled') setBoardOptions(optionsResult.value);
+      }
+    );
+  }, [normalizedCode]);
+
+  const boardRequestRef = useRef(0);
+  useEffect(() => {
+    if (!selectedBoard) {
+      setBoardTrend([]);
+      return;
+    }
+    const requestId = ++boardRequestRef.current;
+    void getBoardMinuteTrend(
+      selectedBoard,
+      minutePeriod as '1' | '5' | '15' | '30' | '60'
+    ).then((data) => {
+      if (requestId === boardRequestRef.current) setBoardTrend(data);
+    }).catch((error) => {
+      console.error('Fetch board trend error:', error);
+      if (requestId === boardRequestRef.current) setBoardTrend([]);
+    });
+  }, [minutePeriod, selectedBoard]);
+
+  useEffect(() => {
+    setChipLoading(true);
+    setMarginLoading(true);
+    setChipError(false);
+    setMarginError(false);
+    void Promise.allSettled([
+      getChipDistribution(normalizedCode).then(setChipData).catch((error) => {
+        console.error('Fetch chip distribution error:', error);
+        setChipError(true);
+      }).finally(() => setChipLoading(false)),
+      getMarginTargetHistory(normalizedCode).then(setMarginData).catch((error) => {
+        console.error('Fetch margin history error:', error);
+        setMarginError(true);
+      }).finally(() => setMarginLoading(false)),
+    ]);
   }, [normalizedCode]);
 
   // 每个 alertType 只预填一次：quote 随轮询高频更新，无守卫会持续覆写用户正在输入的阈值
@@ -936,19 +1143,6 @@ export function StockDetail() {
     }
   }, [normalizedCode]);
 
-  const fetchDividendData = useCallback(async () => {
-    if (!normalizedCode) {
-      return;
-    }
-
-    try {
-      const data = await getDividendDetail(normalizedCode);
-      setDividends(data.slice(0, 6));
-    } catch (error) {
-      console.error('Fetch dividend error:', error);
-    }
-  }, [normalizedCode]);
-
   // 整载只跑一次（换股由路由 key 重挂载触发）；周期/指标变化走下面的专属增量 effect，
   // 若把 fetch 回调放进依赖，切个 tab 就会全屏 loading + 五个接口全部重拉
   useEffect(() => {
@@ -959,7 +1153,6 @@ export function StockDetail() {
         fetchTimeline(),
         fetchKline(),
         fetchFundData(),
-        fetchDividendData(),
       ]);
       setLoading(false);
     };
@@ -1050,6 +1243,22 @@ export function StockDetail() {
     [normalizedCode, toast]
   );
 
+  const selectableBoards = useMemo(() => {
+    const boards = [
+      ...(boardMembership.industry ? [boardMembership.industry] : []),
+      ...boardMembership.concepts,
+      ...boardOptions,
+    ];
+    return [...new Map(boards.map((item) => [`${item.type}-${item.code}`, item])).values()];
+  }, [boardMembership, boardOptions]);
+
+  const selectBoardByName = useCallback((name: string) => {
+    const match = selectableBoards.find((item) => item.name === name.trim());
+    if (!match) return;
+    setSelectedBoard(match);
+    setBoardSearch(match.name);
+  }, [selectableBoards]);
+
   const latestNorthboundHolding = northboundHoldings.at(-1) ?? null;
 
   const timelineChartOption = useMemo(
@@ -1060,8 +1269,10 @@ export function StockDetail() {
         minuteKline,
         prevClose: quote?.prevClose,
         colors: chartColors,
+        boardTrend,
+        boardName: selectedBoard?.name ?? '',
       }),
-    [minuteKline, minutePeriod, quote?.prevClose, timeline, chartColors]
+    [boardTrend, chartColors, minuteKline, minutePeriod, quote?.prevClose, selectedBoard?.name, timeline]
   );
 
   const klineChartOption = useMemo(
@@ -1074,6 +1285,17 @@ export function StockDetail() {
         colors: chartColors,
       }),
     [klineData, selectedOscillator, selectedOverlays, settings.indicatorConfig, chartColors]
+  );
+
+  const latestChip = chipData.at(-1) ?? null;
+  const chipChartOption = useMemo(() => buildChipOption(chipData, chartColors), [chipData, chartColors]);
+  const marginSummary = useMemo(
+    () => summarizeMarginTrend(marginData, quote?.price ?? 0),
+    [marginData, quote?.price]
+  );
+  const marginChartOption = useMemo(
+    () => buildMarginOption(marginData, quote?.price ?? 0, chartColors),
+    [chartColors, marginData, quote?.price]
   );
 
   if (loading) {
@@ -1105,6 +1327,12 @@ export function StockDetail() {
             <h1 className={styles.stockName}>{quote.name}</h1>
             <span className={styles.stockCode}>{quote.code}</span>
           </div>
+          <div className={styles.boardMeta}>
+            <span>行业 · {boardMembership.industry?.name ?? '--'}</span>
+            <span title={boardMembership.concepts.map((item) => item.name).join('、')}>
+              概念 · {boardMembership.concepts.slice(0, 4).map((item) => item.name).join('、') || '--'}
+            </span>
+          </div>
           <div className={styles.priceSection}>
             <span className={`${styles.price} ${getChangeColorClass(quote.changePercent)}`}>
               {formatPrice(quote.price)}
@@ -1121,6 +1349,36 @@ export function StockDetail() {
         </div>
 
         <div className={styles.actions}>
+          <div className={styles.inlineAlert}>
+            <select
+              aria-label="告警类型"
+              value={alertType}
+              onChange={(event) => setAlertType(event.target.value as AlertType)}
+            >
+              {ALERT_TYPE_OPTIONS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+            </select>
+            <input
+              aria-label="告警阈值"
+              value={alertValue}
+              onChange={(event) => setAlertValue(event.target.value)}
+              type="number"
+              step="0.01"
+            />
+            <Button size="sm" icon={<Bell size={14} />} onClick={handleAddAlert}>告警</Button>
+            {alerts.length > 0 && (
+              <details className={styles.alertDetails}>
+                <summary>已设 {alerts.length}</summary>
+                <div className={styles.compactAlertList}>
+                  {alerts.map((rule) => (
+                    <div key={rule.id}>
+                      <span>{ALERT_TYPE_OPTIONS.find((item) => item.key === rule.type)?.label}{rule.value}</span>
+                      <button aria-label="删除告警" onClick={() => handleDeleteAlert(rule.id)}><Trash2 size={13} /></button>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
           <Button
             variant={inWatchlist ? 'primary' : 'secondary'}
             icon={inWatchlist ? <Star size={16} /> : <StarOff size={16} />}
@@ -1189,12 +1447,29 @@ export function StockDetail() {
           <Card
             title="走势"
             extra={
-              <Tabs
-                items={MINUTE_PERIODS}
-                activeKey={minutePeriod}
-                onChange={setMinutePeriod}
-                size="sm"
-              />
+              <div className={styles.timelineControls}>
+                <Tabs
+                  items={MINUTE_PERIODS}
+                  activeKey={minutePeriod}
+                  onChange={setMinutePeriod}
+                  size="sm"
+                />
+                <label className={styles.boardSearch}>
+                  <Search size={14} />
+                  <input
+                    aria-label="搜索行业或概念"
+                    list="stock-board-options"
+                    value={boardSearch}
+                    placeholder="搜索行业或概念"
+                    onChange={(event) => setBoardSearch(event.target.value)}
+                    onBlur={(event) => selectBoardByName(event.currentTarget.value)}
+                    onKeyDown={(event) => { if (event.key === 'Enter') selectBoardByName(event.currentTarget.value); }}
+                  />
+                  <datalist id="stock-board-options">
+                    {selectableBoards.map((item) => <option key={`${item.type}-${item.code}`} value={item.name}>{item.type === 'industry' ? '行业' : '概念'}</option>)}
+                  </datalist>
+                </label>
+              </div>
             }
           >
             <div className={styles.chartContainer}>
@@ -1248,6 +1523,32 @@ export function StockDetail() {
             <div className={styles.chartContainerLarge}>
               <LazyEChart option={klineChartOption} style={{ height: '100%', width: '100%' }} notMerge />
             </div>
+          </Card>
+
+          <Card
+            title="近七日融资融券"
+            extra={marginData.length > 0 && (
+              <span className={`${styles.marketBadge} ${getChangeColorClass(marginSummary.netPressure)}`}>
+                {marginSummary.label}
+              </span>
+            )}
+          >
+            {marginLoading ? <Loading text="加载融资融券..." /> : marginError ? (
+              <Empty title="融资融券加载失败" description="数据源暂时不可用" />
+            ) : marginData.length === 0 ? (
+              <Empty title="暂无近七日融资融券数据" description="该股票可能不是融资融券标的，或数据尚未披露" />
+            ) : (
+              <>
+                <div className={styles.marginSummary}>
+                  <span>融资净买入<strong className={getChangeColorClass(marginSummary.financeNet)}>{formatYuanAmount(marginSummary.financeNet)}</strong></span>
+                  <span>融券净卖出估值<strong className={getChangeColorClass(-marginSummary.shortNetValue)}>{formatYuanAmount(marginSummary.shortNetValue)}</strong></span>
+                  <small>融券金额按当前股价估算</small>
+                </div>
+                <div className={styles.structureChart}>
+                  <LazyEChart option={marginChartOption} style={{ height: '100%', width: '100%' }} notMerge />
+                </div>
+              </>
+            )}
           </Card>
         </div>
 
@@ -1417,85 +1718,27 @@ export function StockDetail() {
                 </div>
               </div>
             ) : (
-              <div className={styles.dividendEmpty}>当前股票暂无北向持仓样本</div>
+              <div className={styles.emptyText}>当前股票暂无北向持仓样本</div>
             )}
           </Card>
 
-          <Card title="分红 / 除权">
-            {dividends.length === 0 ? (
-              <div className={styles.dividendEmpty}>暂无可展示的分红数据</div>
+          <Card title="筹码峰" extra={latestChip && <span className={styles.chartDate}>{latestChip.date}</span>}>
+            {chipLoading ? <Loading text="计算筹码分布..." /> : chipError ? (
+              <Empty title="筹码峰加载失败" description="行情源暂时不可用" />
+            ) : !latestChip?.histogram ? (
+              <Empty title="暂无筹码峰数据" description="该标的可能缺少换手率数据" />
             ) : (
-              <div className={styles.dividendList}>
-                {dividends.map((item, index) => (
-                  <div key={`${item.reportDate ?? 'unknown'}-${index}`} className={styles.dividendItem}>
-                    <div className={styles.dividendHeader}>
-                      <span className={styles.dividendReport}>{formatMaybeDate(item.reportDate)}</span>
-                      <span className={styles.dividendProgress}>{item.assignProgress || '待披露'}</span>
-                    </div>
-                    <div className={styles.dividendDesc}>{item.dividendDesc || '暂无派息说明'}</div>
-                    <div className={styles.dividendMeta}>
-                      <span>股息率 {formatYield(item.dividendYield)}</span>
-                      <span>除权 {formatMaybeDate(item.exDividendDate)}</span>
-                    </div>
-                    <div className={styles.dividendMeta}>
-                      <span>公告 {formatMaybeDate(item.noticeDate)}</span>
-                      <span>发放 {formatMaybeDate(item.payDate)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          <Card title="本地告警">
-            <div className={styles.alertEditor}>
-              <div className={styles.alertInputs}>
-                <select
-                  className={styles.alertSelect}
-                  value={alertType}
-                  onChange={(event) => setAlertType(event.target.value as AlertType)}
-                >
-                  {ALERT_TYPE_OPTIONS.map((item) => (
-                    <option key={item.key} value={item.key}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className={styles.alertInput}
-                  value={alertValue}
-                  onChange={(event) => setAlertValue(event.target.value)}
-                  type="number"
-                  step="0.01"
-                />
-              </div>
-              <Button variant="secondary" icon={<Bell size={14} />} onClick={handleAddAlert}>
-                新增告警
-              </Button>
-            </div>
-
-            {alerts.length === 0 ? (
-              <div className={styles.dividendEmpty}>当前股票暂无本地告警</div>
-            ) : (
-              <div className={styles.alertList}>
-                {alerts.map((rule) => (
-                  <div key={rule.id} className={styles.alertItem}>
-                    <div className={styles.alertInfo}>
-                      <span className={styles.alertLabel}>
-                        {ALERT_TYPE_OPTIONS.find((item) => item.key === rule.type)?.label}
-                        {rule.value}
-                      </span>
-                      <span className={styles.alertMeta}>冷却 {rule.cooldownSec}s</span>
-                    </div>
-                    <button
-                      className={styles.alertDelete}
-                      onClick={() => handleDeleteAlert(rule.id)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
+              <>
+                <div className={styles.chipStats}>
+                  <span>获利比例<strong>{formatPercent((latestChip.profitRatio ?? 0) * 100, false)}</strong></span>
+                  <span>平均成本<strong>{formatPrice(latestChip.avgCost)}</strong></span>
+                  <span>70%成本区间<strong>{formatPrice(latestChip.cost70Low)} - {formatPrice(latestChip.cost70High)}</strong></span>
+                  <span>90%成本区间<strong>{formatPrice(latestChip.cost90Low)} - {formatPrice(latestChip.cost90High)}</strong></span>
+                </div>
+                <div className={styles.chipChart}>
+                  <LazyEChart option={chipChartOption} style={{ height: '100%', width: '100%' }} notMerge />
+                </div>
+              </>
             )}
           </Card>
         </div>
