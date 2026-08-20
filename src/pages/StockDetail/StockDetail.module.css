@@ -74,7 +74,8 @@
   margin-bottom: var(--spacing-xs);
 }
 
-.boardMeta span {
+.boardMeta span,
+.boardMeta button {
   max-width: 440px;
   padding: 2px 7px;
   overflow: hidden;
@@ -84,6 +85,17 @@
   font-size: var(--font-size-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.boardMeta button {
+  cursor: pointer;
+  border: 0;
+}
+
+.boardMeta button:hover,
+.boardMeta button:focus-visible {
+  color: var(--color-primary);
+  outline: none;
 }
 
 .priceSection {
@@ -488,6 +500,35 @@
   gap: var(--spacing-md);
 }
 
+.orderSummary {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+}
+
+.orderSummary span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.orderSummary span:nth-child(2) {
+  text-align: center;
+}
+
+.orderSummary span:last-child {
+  text-align: right;
+}
+
+.orderSummary strong {
+  font: 600 var(--font-size-sm) var(--font-mono);
+}
+
 .orderBar {
   display: flex;
   height: 12px;
@@ -523,6 +564,16 @@
   gap: var(--spacing-xs);
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
+}
+
+.legendItem span {
+  flex: 1;
+}
+
+.legendItem strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-weight: 500;
 }
 
 .legendItem i {

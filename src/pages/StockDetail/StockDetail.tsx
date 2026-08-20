@@ -52,6 +52,7 @@ import {
 } from '@/services/storage';
 import type { AlertType } from '@/types';
 import type { IndicatorConfig } from '@/types';
+import { getSyncedPriceAxis } from './stockChartScale';
 import {
   formatAmount,
   formatChange,
@@ -125,6 +126,7 @@ interface MinuteKlineItem {
   high: number;
   low: number;
   volume: number;
+  changePercent?: number | null;
 }
 
 interface KlineDataItem extends HistoryKline {
@@ -163,16 +165,14 @@ function buildTimelineOption(args: {
     const times = timeline.data.map((item) => item.time);
     const prices = timeline.data.map((item) => item.price);
     const avgPrices = timeline.data.map((item) => item.avgPrice);
-    const basePrice = prevClose ?? prices[0];
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const range = Math.max(maxPrice - basePrice, basePrice - minPrice) * 1.1;
+    const basePrice = timeline.preClose || prevClose || prices[0];
+    const axis = getSyncedPriceAxis([...prices, ...avgPrices], basePrice);
     const changePercents = prices.map((price) => basePrice ? (price - basePrice) / basePrice * 100 : 0);
     const boardChanges = boardChangeSeries(boardTrend, times);
 
     return {
       animation: false,
-      grid: { left: 60, right: 20, top: 20, bottom: 30 },
+      grid: { left: 60, right: 58, top: 20, bottom: 30 },
       xAxis: {
         type: 'category',
         data: times,
@@ -182,8 +182,9 @@ function buildTimelineOption(args: {
       yAxis: [
         {
           type: 'value',
-          min: basePrice - range,
-          max: basePrice + range,
+          min: axis.priceMin,
+          max: axis.priceMax,
+          splitNumber: 4,
           axisLine: { show: false },
           axisLabel: {
             color: colors.textTertiary,
@@ -194,7 +195,14 @@ function buildTimelineOption(args: {
         },
         {
           type: 'value',
-          axisLabel: { color: colors.textTertiary, formatter: '{value}%' },
+          min: axis.percentMin,
+          max: axis.percentMax,
+          splitNumber: 4,
+          axisLabel: {
+            color: colors.textTertiary,
+            fontSize: 10,
+            formatter: (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(2)}%`,
+          },
           splitLine: { show: false },
         },
       ],
@@ -263,10 +271,14 @@ function buildTimelineOption(args: {
   const times = minuteKline.map((item) => item.time);
   const ohlc = minuteKline.map((item) => [item.open, item.close, item.low, item.high]);
   const boardChanges = boardChangeSeries(boardTrend, times);
+  const axis = getSyncedPriceAxis(
+    minuteKline.flatMap((item) => [item.open, item.close, item.low, item.high]),
+    prevClose ?? minuteKline[0]?.open
+  );
 
   return {
     animation: false,
-    grid: { left: 60, right: 20, top: 20, bottom: 30 },
+    grid: { left: 60, right: 58, top: 20, bottom: 30 },
     xAxis: {
       type: 'category',
       data: times,
@@ -276,7 +288,9 @@ function buildTimelineOption(args: {
     yAxis: [
       {
         type: 'value',
-        scale: true,
+        min: axis.priceMin,
+        max: axis.priceMax,
+        splitNumber: 4,
         axisLine: { show: false },
         axisLabel: {
           color: colors.textTertiary,
@@ -287,7 +301,14 @@ function buildTimelineOption(args: {
       },
       {
         type: 'value',
-        axisLabel: { color: colors.textTertiary, formatter: '{value}%' },
+        min: axis.percentMin,
+        max: axis.percentMax,
+        splitNumber: 4,
+        axisLabel: {
+          color: colors.textTertiary,
+          fontSize: 10,
+          formatter: (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(2)}%`,
+        },
         splitLine: { show: false },
       },
     ],
@@ -320,7 +341,8 @@ function buildTimelineOption(args: {
       formatter: (params: Array<{ axisValue: string }>) => {
         const index = times.indexOf(params[0]?.axisValue ?? '');
         const item = minuteKline[index];
-        const changePercent = item && prevClose ? (item.close - prevClose) / prevClose * 100 : null;
+        const changePercent = item?.changePercent
+          ?? (item && prevClose ? (item.close - prevClose) / prevClose * 100 : null);
         return [
           params[0]?.axisValue ?? '',
           `价格 ${formatPrice(item?.close)}`,
@@ -336,10 +358,16 @@ function buildTimelineOption(args: {
 
 function boardChangeSeries(data: BoardTrend, times: string[]) {
   const getPrice = (item: BoardTrend[number]) => 'price' in item ? item.price : item.close;
+  const changeByTime = new Map(data.map((item) => [
+    item.time.slice(-5),
+    'changePercent' in item ? item.changePercent : null,
+  ]));
   const valueByTime = new Map(data.map((item) => [item.time.slice(-5), getPrice(item)]));
   const base = data.find((item) => getPrice(item) !== null);
   const basePrice = base ? getPrice(base) ?? 0 : 0;
   return times.map((time) => {
+    const changePercent = changeByTime.get(time.slice(-5));
+    if (changePercent !== null && changePercent !== undefined) return changePercent;
     const value = valueByTime.get(time.slice(-5));
     return value === null || value === undefined || basePrice === 0
       ? null
@@ -347,9 +375,14 @@ function boardChangeSeries(data: BoardTrend, times: string[]) {
   });
 }
 
-function buildChipOption(data: ChipRows, colors: ChartColors) {
+function buildChipOption(data: ChipRows, currentPrice: number, colors: ChartColors) {
   const histogram = data.at(-1)?.histogram;
   if (!histogram?.prices.length) return {};
+  const closestPrice = currentPrice > 0
+    ? histogram.prices.reduce((closest, price) =>
+        Math.abs(price - currentPrice) < Math.abs(closest - currentPrice) ? price : closest
+      )
+    : null;
   return {
     animation: false,
     grid: { left: 58, right: 18, top: 12, bottom: 28 },
@@ -370,6 +403,18 @@ function buildChipOption(data: ChipRows, colors: ChartColors) {
       data: histogram.ratios,
       itemStyle: { color: colors.rise, borderRadius: [0, 2, 2, 0] },
       barMaxWidth: 5,
+      markLine: closestPrice === null ? undefined : {
+        silent: true,
+        symbol: 'none',
+        lineStyle: { color: '#f59e0b', width: 1.5 },
+        label: {
+          show: true,
+          position: 'insideEndTop',
+          color: '#f59e0b',
+          formatter: `现价 ${formatPrice(currentPrice)}`,
+        },
+        data: [{ yAxis: closestPrice.toFixed(2) }],
+      },
     }],
     tooltip: {
       trigger: 'axis',
@@ -1288,7 +1333,16 @@ export function StockDetail() {
   );
 
   const latestChip = chipData.at(-1) ?? null;
-  const chipChartOption = useMemo(() => buildChipOption(chipData, chartColors), [chipData, chartColors]);
+  const buySidePercent = largeOrder
+    ? (largeOrder.buyLargeRatio + largeOrder.buySmallRatio) * 100
+    : 0;
+  const sellSidePercent = largeOrder
+    ? (largeOrder.sellLargeRatio + largeOrder.sellSmallRatio) * 100
+    : 0;
+  const chipChartOption = useMemo(
+    () => buildChipOption(chipData, quote?.price ?? 0, chartColors),
+    [chipData, quote?.price, chartColors]
+  );
   const marginSummary = useMemo(
     () => summarizeMarginTrend(marginData, quote?.price ?? 0),
     [marginData, quote?.price]
@@ -1328,10 +1382,16 @@ export function StockDetail() {
             <span className={styles.stockCode}>{quote.code}</span>
           </div>
           <div className={styles.boardMeta}>
-            <span>行业 · {boardMembership.industry?.name ?? '--'}</span>
-            <span title={boardMembership.concepts.map((item) => item.name).join('、')}>
-              概念 · {boardMembership.concepts.slice(0, 4).map((item) => item.name).join('、') || '--'}
-            </span>
+            {boardMembership.industry ? (
+              <button onClick={() => navigate(`/boards/industry/${boardMembership.industry?.code}`)}>
+                行业 · {boardMembership.industry.name}
+              </button>
+            ) : <span>行业 · --</span>}
+            {boardMembership.concepts.length > 0 ? boardMembership.concepts.slice(0, 4).map((item) => (
+              <button key={item.code} onClick={() => navigate(`/boards/concept/${item.code}`)}>
+                概念 · {item.name}
+              </button>
+            )) : <span>概念 · --</span>}
           </div>
           <div className={styles.priceSection}>
             <span className={`${styles.price} ${getChangeColorClass(quote.changePercent)}`}>
@@ -1640,28 +1700,39 @@ export function StockDetail() {
           {largeOrder && (
             <Card title="大单结构">
               <div className={styles.largeOrder}>
+                <div className={styles.orderSummary}>
+                  <span className="text-rise">
+                    买盘 <strong>{buySidePercent.toFixed(1)}%</strong>
+                  </span>
+                  <span className={getChangeColorClass(buySidePercent - sellSidePercent)}>
+                    净买差 <strong>{formatPercent(buySidePercent - sellSidePercent)}</strong>
+                  </span>
+                  <span className="text-fall">
+                    卖盘 <strong>{sellSidePercent.toFixed(1)}%</strong>
+                  </span>
+                </div>
                 <div className={styles.orderBar}>
-                  <div className={styles.buyLarge} style={{ width: `${largeOrder.buyLargeRatio}%` }} />
-                  <div className={styles.buySmall} style={{ width: `${largeOrder.buySmallRatio}%` }} />
-                  <div className={styles.sellSmall} style={{ width: `${largeOrder.sellSmallRatio}%` }} />
-                  <div className={styles.sellLarge} style={{ width: `${largeOrder.sellLargeRatio}%` }} />
+                  <div className={styles.buyLarge} style={{ width: `${largeOrder.buyLargeRatio * 100}%` }} />
+                  <div className={styles.buySmall} style={{ width: `${largeOrder.buySmallRatio * 100}%` }} />
+                  <div className={styles.sellSmall} style={{ width: `${largeOrder.sellSmallRatio * 100}%` }} />
+                  <div className={styles.sellLarge} style={{ width: `${largeOrder.sellLargeRatio * 100}%` }} />
                 </div>
                 <div className={styles.orderLegend}>
                   <span className={styles.legendItem}>
                     <i className={styles.buyLargeDot} />
-                    大买 {largeOrder.buyLargeRatio.toFixed(1)}%
+                    <span>大买</span><strong>{(largeOrder.buyLargeRatio * 100).toFixed(1)}%</strong>
                   </span>
                   <span className={styles.legendItem}>
                     <i className={styles.buySmallDot} />
-                    小买 {largeOrder.buySmallRatio.toFixed(1)}%
+                    <span>小买</span><strong>{(largeOrder.buySmallRatio * 100).toFixed(1)}%</strong>
                   </span>
                   <span className={styles.legendItem}>
                     <i className={styles.sellSmallDot} />
-                    小卖 {largeOrder.sellSmallRatio.toFixed(1)}%
+                    <span>小卖</span><strong>{(largeOrder.sellSmallRatio * 100).toFixed(1)}%</strong>
                   </span>
                   <span className={styles.legendItem}>
                     <i className={styles.sellLargeDot} />
-                    大卖 {largeOrder.sellLargeRatio.toFixed(1)}%
+                    <span>大卖</span><strong>{(largeOrder.sellLargeRatio * 100).toFixed(1)}%</strong>
                   </span>
                 </div>
               </div>

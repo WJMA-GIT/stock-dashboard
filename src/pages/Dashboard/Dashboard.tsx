@@ -12,6 +12,7 @@ import { useBoardData, useAppSettings } from '@/contexts';
 import {
   getAllAShareQuotes,
   getFullQuotes,
+  getFundFlowRank,
   getMarketAmountComparison,
   getMarketFundFlow,
   getNorthboundFlowSummary,
@@ -27,6 +28,10 @@ import {
   getChangeColorClass,
 } from '@/utils/format';
 import type { FullQuote } from 'stock-sdk';
+import {
+  rankMarketFundFlows,
+  type FundFlowRankingKey,
+} from './marketFundFlowRanking';
 import styles from './Dashboard.module.css';
 
 // 主要指数
@@ -46,7 +51,16 @@ const RANKING_TABS = [
   { key: 'rise', label: '涨幅榜' },
   { key: 'fall', label: '跌幅榜' },
   { key: 'amount', label: '成交额' },
+  { key: 'netInflow', label: '净流入' },
+  { key: 'netOutflow', label: '净流出' },
+  { key: 'largeNetInflow', label: '大单净流入' },
   { key: 'turnover', label: '换手率' },
+];
+
+const FUND_FLOW_RANKING_KEYS: FundFlowRankingKey[] = [
+  'netInflow',
+  'netOutflow',
+  'largeNetInflow',
 ];
 
 interface MarketSummary {
@@ -62,6 +76,7 @@ type MarketFundFlowRows = Awaited<ReturnType<typeof getMarketFundFlow>>;
 type NorthboundSummaryRows = Awaited<ReturnType<typeof getNorthboundFlowSummary>>;
 type MarketAmountComparison = Awaited<ReturnType<typeof getMarketAmountComparison>>;
 type USQuotes = Awaited<ReturnType<typeof getUSQuotes>>;
+type FundFlowRankRows = Awaited<ReturnType<typeof getFundFlowRank>>;
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -79,6 +94,8 @@ export function Dashboard() {
   const [amountComparison, setAmountComparison] = useState<MarketAmountComparison | null>(null);
   const [marketFundFlowHistory, setMarketFundFlowHistory] =
     useState<MarketFundFlowRows>([]);
+  const [fundFlowRanks, setFundFlowRanks] = useState<FundFlowRankRows>([]);
+  const [fundFlowRanksLoading, setFundFlowRanksLoading] = useState(true);
   const [northboundSummary, setNorthboundSummary] =
     useState<NorthboundSummaryRows>([]);
   const [rankingTab, setRankingTab] = useState('rise');
@@ -132,17 +149,19 @@ export function Dashboard() {
   }, []);
 
   const fetchMarketInsights = useCallback(async () => {
-    try {
-      const [marketFundFlowData, northboundSummaryData] = await Promise.all([
-        getMarketFundFlow(),
-        getNorthboundFlowSummary(),
-      ]);
+    const [marketResult, northboundResult, rankResult] = await Promise.allSettled([
+      getMarketFundFlow(),
+      getNorthboundFlowSummary(),
+      getFundFlowRank({ indicator: 'today' }),
+    ]);
 
-      setMarketFundFlowHistory(marketFundFlowData);
-      setNorthboundSummary(northboundSummaryData);
-    } catch (error) {
-      console.error('Dashboard market insights error:', error);
-    }
+    if (marketResult.status === 'fulfilled') setMarketFundFlowHistory(marketResult.value);
+    else console.error('Dashboard market fund flow error:', marketResult.reason);
+    if (northboundResult.status === 'fulfilled') setNorthboundSummary(northboundResult.value);
+    else console.error('Dashboard northbound error:', northboundResult.reason);
+    if (rankResult.status === 'fulfilled') setFundFlowRanks(rankResult.value);
+    else console.error('Dashboard fund flow rank error:', rankResult.reason);
+    setFundFlowRanksLoading(false);
   }, []);
 
   // 初始加载
@@ -242,6 +261,32 @@ export function Dashboard() {
 
     return sorted.slice(0, 10);
   }, [marketQuotes, rankingTab]);
+
+  const fundFlowRankingKey = FUND_FLOW_RANKING_KEYS.find((key) => key === rankingTab);
+  const fundFlowRankingItems = useMemo(
+    () => fundFlowRankingKey ? rankMarketFundFlows(fundFlowRanks, fundFlowRankingKey) : [],
+    [fundFlowRankingKey, fundFlowRanks]
+  );
+  const displayedRankingItems = useMemo(() => {
+    if (fundFlowRankingKey) {
+      const field = fundFlowRankingKey === 'largeNetInflow' ? 'largeNetInflow' : 'mainNetInflow';
+      return fundFlowRankingItems.map((item) => ({
+        ...item,
+        metricValue: item[field],
+        metricLabel: formatYuanAmount(item[field]),
+      }));
+    }
+
+    return rankingItems.map((item) => ({
+      ...item,
+      metricValue: item.changePercent,
+      metricLabel: rankingTab === 'amount'
+        ? formatAmount(item.amount)
+        : rankingTab === 'turnover'
+          ? `${item.turnoverRate?.toFixed(2) ?? '--'}%`
+          : formatPercent(item.changePercent),
+    }));
+  }, [fundFlowRankingItems, fundFlowRankingKey, rankingItems, rankingTab]);
 
   // 只在初始加载时显示 loading，之后即使数据获取失败也显示页面
   if (initialLoading && boardLoading) {
@@ -476,11 +521,13 @@ export function Dashboard() {
               />
             }
           >
-            {rankingItems.length === 0 ? (
-              <Loading size="md" />
+            {displayedRankingItems.length === 0 ? (
+              fundFlowRankingKey && !fundFlowRanksLoading
+                ? <Empty title="暂无资金流数据" description="系统会自动重试" />
+                : <Loading size="md" />
             ) : (
               <div className={styles.rankingList}>
-                {rankingItems.map((item, index) => (
+                {displayedRankingItems.map((item, index) => (
                   <div
                     key={item.code}
                     className={styles.rankingItem}
@@ -494,12 +541,8 @@ export function Dashboard() {
                     <div className={styles.stockPrice}>
                       <span>{formatPrice(item.price)}</span>
                     </div>
-                    <div className={`${styles.stockChange} ${getChangeColorClass(item.changePercent)}`}>
-                      {rankingTab === 'amount'
-                        ? formatAmount(item.amount)
-                        : rankingTab === 'turnover'
-                          ? `${item.turnoverRate?.toFixed(2) ?? '--'}%`
-                          : formatPercent(item.changePercent)}
+                    <div className={`${styles.stockChange} ${getChangeColorClass(item.metricValue)}`}>
+                      {item.metricLabel}
                     </div>
                   </div>
                 ))}
