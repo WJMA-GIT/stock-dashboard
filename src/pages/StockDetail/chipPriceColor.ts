@@ -4,5 +4,5 @@ export function getChipPriceColor(
   colors: { rise: string; fall: string; flat: string }
 ) {
   if (currentPrice <= 0 || price === currentPrice) return colors.flat;
-  return price < currentPrice ? colors.fall : colors.rise;
+  return price < currentPrice ? colors.rise : colors.fall;
 }
