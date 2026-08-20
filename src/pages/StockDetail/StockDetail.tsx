@@ -23,6 +23,7 @@ import type {
 } from 'stock-sdk';
 import { LazyEChart } from '@/components/charts/LazyEChart';
 import { getChartColors, type ChartColors } from '@/components/charts/chartTheme';
+import { getChipPriceColor } from './chipPriceColor';
 import { Button, Card, Empty, Loading, Tabs, useToast } from '@/components/common';
 import { useAppSettings } from '@/contexts';
 import { usePolling, useTheme } from '@/hooks';
@@ -378,11 +379,6 @@ function boardChangeSeries(data: BoardTrend, times: string[]) {
 function buildChipOption(data: ChipRows, currentPrice: number, colors: ChartColors) {
   const histogram = data.at(-1)?.histogram;
   if (!histogram?.prices.length) return {};
-  const closestPrice = currentPrice > 0
-    ? histogram.prices.reduce((closest, price) =>
-        Math.abs(price - currentPrice) < Math.abs(closest - currentPrice) ? price : closest
-      )
-    : null;
   return {
     animation: false,
     grid: { left: 58, right: 18, top: 12, bottom: 28 },
@@ -400,21 +396,12 @@ function buildChipOption(data: ChipRows, currentPrice: number, colors: ChartColo
     series: [{
       name: '筹码占比',
       type: 'bar',
-      data: histogram.ratios,
-      itemStyle: { color: colors.rise, borderRadius: [0, 2, 2, 0] },
+      data: histogram.ratios.map((value, index) => ({
+        value,
+        itemStyle: { color: getChipPriceColor(histogram.prices[index], currentPrice, colors) },
+      })),
+      itemStyle: { borderRadius: [0, 2, 2, 0] },
       barMaxWidth: 5,
-      markLine: closestPrice === null ? undefined : {
-        silent: true,
-        symbol: 'none',
-        lineStyle: { color: '#f59e0b', width: 1.5 },
-        label: {
-          show: true,
-          position: 'insideEndTop',
-          color: '#f59e0b',
-          formatter: `现价 ${formatPrice(currentPrice)}`,
-        },
-        data: [{ yAxis: closestPrice.toFixed(2) }],
-      },
     }],
     tooltip: {
       trigger: 'axis',
