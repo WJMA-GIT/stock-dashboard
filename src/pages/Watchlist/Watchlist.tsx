@@ -48,12 +48,13 @@ import {
   getChangeColorClass,
   normalizeStockCode,
 } from '@/utils/format';
+import { sortRows } from '@/utils/tableSort';
 import type { AlertRule, ColumnConfig, WatchlistGroup } from '@/types';
 import type { FullQuote } from 'stock-sdk';
 import styles from './Watchlist.module.css';
 
 // 排序类型
-type SortField = 'default' | 'changePercent' | 'amount' | 'turnoverRate' | 'totalMarketCap';
+type SortField = 'default' | 'name' | 'price' | 'changePercent' | 'amount' | 'turnoverRate' | 'totalMarketCap';
 type SortOrder = 'asc' | 'desc';
 
 const SORT_OPTIONS: { field: SortField; label: string }[] = [
@@ -492,11 +493,7 @@ export function Watchlist() {
       return stockList; // 保持原始顺序
     }
 
-    return [...stockList].sort((a, b) => {
-      const aVal = a[sortField] ?? 0;
-      const bVal = b[sortField] ?? 0;
-      return sortOrder === 'desc' ? (bVal as number) - (aVal as number) : (aVal as number) - (bVal as number);
-    });
+    return sortRows(stockList, (quote) => quote[sortField] ?? 0, sortOrder);
   }, [dragPreviewCodes, normalizedActiveCodes, quotes, sortField, sortOrder]);
 
   return (
@@ -730,25 +727,70 @@ export function Watchlist() {
               </div>
 
               <div className={styles.stockTable}>
-                <div className={styles.tableHeader}>
+                <div className={styles.tableHeader} role="row">
                   {showSelectMode && <span className={styles.colSelect}></span>}
-                  {sortField === 'default' && <span className={styles.colDrag}></span>}
+                  {sortField === 'default' && !showSelectMode && <span className={styles.colDrag}></span>}
                   {visibleColumns.includes('name') && (
-                    <span className={styles.colName}>名称/代码</span>
+                    <span
+                      className={styles.colName}
+                      role="columnheader"
+                      aria-sort={sortField === 'name' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                      <button className={styles.sortHeader} onClick={() => handleSortChange('name')}>
+                        名称/代码
+                        {sortField === 'name' ? (sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />) : <ArrowUpDown size={12} />}
+                      </button>
+                    </span>
                   )}
                   {visibleColumns.includes('price') && (
-                    <span className={styles.colPrice}>现价</span>
+                    <span
+                      className={styles.colPrice}
+                      role="columnheader"
+                      aria-sort={sortField === 'price' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                      <button className={styles.sortHeader} onClick={() => handleSortChange('price')}>
+                        现价
+                        {sortField === 'price' ? (sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />) : <ArrowUpDown size={12} />}
+                      </button>
+                    </span>
                   )}
                   {visibleColumns.includes('change') && (
-                    <span className={styles.colChange}>涨跌幅</span>
+                    <span
+                      className={styles.colChange}
+                      role="columnheader"
+                      aria-sort={sortField === 'changePercent' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                      <button className={styles.sortHeader} onClick={() => handleSortChange('changePercent')}>
+                        涨跌幅
+                        {sortField === 'changePercent' ? (sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />) : <ArrowUpDown size={12} />}
+                      </button>
+                    </span>
                   )}
                   {visibleColumns.includes('amount') && (
-                    <span className={styles.colAmount}>成交额</span>
+                    <span
+                      className={styles.colAmount}
+                      role="columnheader"
+                      aria-sort={sortField === 'amount' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                      <button className={styles.sortHeader} onClick={() => handleSortChange('amount')}>
+                        成交额
+                        {sortField === 'amount' ? (sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />) : <ArrowUpDown size={12} />}
+                      </button>
+                    </span>
                   )}
                   {visibleColumns.includes('turnover') && (
-                    <span className={styles.colTurnover}>换手</span>
+                    <span
+                      className={styles.colTurnover}
+                      role="columnheader"
+                      aria-sort={sortField === 'turnoverRate' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                      <button className={styles.sortHeader} onClick={() => handleSortChange('turnoverRate')}>
+                        换手
+                        {sortField === 'turnoverRate' ? (sortOrder === 'desc' ? <ArrowDown size={12} /> : <ArrowUp size={12} />) : <ArrowUpDown size={12} />}
+                      </button>
+                    </span>
                   )}
-                  <span className={styles.colAction}>操作</span>
+                  <span className={styles.colAction} role="columnheader">操作</span>
                 </div>
 
                 <div className={styles.tableBody}>

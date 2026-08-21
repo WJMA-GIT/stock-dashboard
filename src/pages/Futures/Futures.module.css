@@ -11,6 +11,9 @@
 .tableWrap { overflow-x: auto; }
 .tableHeader, .row { display: grid; grid-template-columns: minmax(170px, 1.4fr) repeat(4, minmax(86px, .7fr)) minmax(100px, .8fr); align-items: center; gap: var(--spacing-md); min-width: 780px; padding: 0 var(--spacing-lg); }
 .tableHeader { height: 42px; color: var(--text-tertiary); background: var(--bg-tertiary); font-size: var(--font-size-xs); }
+.sortButton { display: flex; align-items: center; gap: 4px; width: 100%; color: inherit; text-align: left; }
+.sortButton:hover { color: var(--text-primary); }
+.sortButton i { color: var(--color-accent); font-style: normal; }
 .row { min-height: 58px; color: var(--text-secondary); border-bottom: 1px solid var(--border-secondary); font: var(--font-size-sm) var(--font-mono); }
 .row:last-child { border-bottom: 0; }
 .name { display: flex; flex-direction: column; min-width: 0; }

@@ -6,6 +6,7 @@ import { useAppSettings } from '@/contexts';
 import { usePolling } from '@/hooks';
 import { getStockChanges } from '@/services/sdk';
 import { normalizeStockCode } from '@/utils/format';
+import { sortRows, type SortDirection } from '@/utils/tableSort';
 import {
   CHANGE_GROUPS,
   filterChangeRows,
@@ -16,11 +17,26 @@ import {
 import styles from './MarketChanges.module.css';
 
 type Rows = Awaited<ReturnType<typeof getStockChanges>>;
+type SortKey = 'time' | 'stock' | 'changeType' | 'info';
 
 const DIRECTION_TABS = [
   { key: 'up', label: '上涨异动', icon: <TrendingUp size={15} /> },
   { key: 'down', label: '下跌异动', icon: <TrendingDown size={15} /> },
 ];
+
+const COLUMNS: Array<{ key: SortKey; label: string }> = [
+  { key: 'time', label: '时间' },
+  { key: 'stock', label: '股票' },
+  { key: 'changeType', label: '异动类型' },
+  { key: 'info', label: '相关信息' },
+];
+
+const SORT_VALUE: Record<SortKey, (row: Rows[number]) => string | number | null | undefined> = {
+  time: (row) => row.time,
+  stock: (row) => `${row.name}${row.code}`,
+  changeType: (row) => row.changeTypeLabel,
+  info: (row) => formatChangeInfo(row),
+};
 
 export function MarketChanges() {
   const navigate = useNavigate();
@@ -29,6 +45,7 @@ export function MarketChanges() {
   const [changeType, setChangeType] = useState<StockChangeKey>('rocket_launch');
   const [rows, setRows] = useState<Rows>([]);
   const [keyword, setKeyword] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({ key: 'time', direction: 'desc' });
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
@@ -55,8 +72,8 @@ export function MarketChanges() {
   }, [changeType, refresh]);
 
   const visibleRows = useMemo(
-    () => filterChangeRows([...rows].sort((a, b) => b.time.localeCompare(a.time)), keyword),
-    [keyword, rows]
+    () => sortRows(filterChangeRows(rows, keyword), SORT_VALUE[sort.key], sort.direction),
+    [keyword, rows, sort]
   );
   const uniqueStocks = useMemo(() => new Set(rows.map((item) => item.code)).size, [rows]);
   const types = CHANGE_GROUPS[direction];
@@ -127,7 +144,25 @@ export function MarketChanges() {
           />
         ) : (
           <div className={styles.stream}>
-            <div className={styles.streamHeader}><span>时间</span><span>股票</span><span>异动类型</span><span>相关信息</span></div>
+            <div className={styles.streamHeader}>
+              {COLUMNS.map((column) => {
+                const active = sort.key === column.key;
+                return (
+                  <span key={column.key} role="columnheader" aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                    <button
+                      className={styles.sortButton}
+                      aria-label={`${column.label}，${active ? `当前${sort.direction === 'asc' ? '升序' : '降序'}` : '未排序'}，点击排序`}
+                      onClick={() => setSort((current) => ({
+                        key: column.key,
+                        direction: current.key === column.key && current.direction === 'asc' ? 'desc' : 'asc',
+                      }))}
+                    >
+                      {column.label}<i aria-hidden="true">{active ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}</i>
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
             {visibleRows.map((item, index) => (
               <button
                 key={`${item.time}-${item.code}-${index}`}

@@ -249,6 +249,22 @@
   flex-direction: column;
 }
 
+.sortHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.sortHeader:hover,
+.sortHeader:focus-visible {
+  color: var(--text-primary);
+}
+
 .tableRow {
   display: flex;
   align-items: center;

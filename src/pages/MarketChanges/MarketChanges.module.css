@@ -16,6 +16,9 @@
 .typeButton.active { color: var(--color-accent); background: var(--color-accent-bg); border-color: var(--color-accent); }
 .streamHeader, .changeRow { display: grid; grid-template-columns: 90px minmax(140px, .8fr) 120px minmax(220px, 2fr); align-items: center; gap: var(--spacing-lg); }
 .streamHeader { padding: 10px var(--spacing-lg); font-size: var(--font-size-xs); color: var(--text-tertiary); background: var(--bg-tertiary); }
+.sortButton { display: flex; align-items: center; gap: 4px; width: 100%; color: inherit; text-align: left; }
+.sortButton:hover { color: var(--text-primary); }
+.sortButton i { color: var(--color-accent); font-style: normal; }
 .changeRow { width: 100%; padding: var(--spacing-md) var(--spacing-lg); color: var(--text-primary); text-align: left; border-bottom: 1px solid var(--border-secondary); transition: background var(--transition-fast); }
 .changeRow:hover { background: var(--bg-tertiary); }
 .changeRow time { font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--text-secondary); }

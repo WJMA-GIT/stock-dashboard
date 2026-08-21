@@ -5,7 +5,15 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, BarChart2, RefreshCw } from 'lucide-react';
+import {
+  TrendingUp,
+  TrendingDown,
+  BarChart2,
+  RefreshCw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from 'lucide-react';
 import { Card, Tabs, Loading } from '@/components/common';
 import { useAppSettings, useBoardData } from '@/contexts';
 import { usePolling } from '@/hooks';
@@ -16,6 +24,7 @@ import {
   formatYuanAmount,
   getChangeColorClass,
 } from '@/utils/format';
+import { sortRows, type SortDirection } from '@/utils/tableSort';
 import type { FundFlowRankItem, IndustryBoard, SectorFundFlowItem } from 'stock-sdk';
 import { splitFundFlowRanks } from './fundFlowRanking';
 import styles from './Rankings.module.css';
@@ -29,6 +38,22 @@ const RANKING_TYPES = [
 ];
 
 type SortKey = 'rise' | 'fall' | 'amount' | 'turnover';
+type BoardSortKey = 'rank' | 'name' | 'changePercent' | 'leadingStock' | 'stats' | 'turnoverRate';
+type BoardSort = { key: BoardSortKey; direction: SortDirection } | null;
+
+const BOARD_SORT_GETTERS: Record<
+  Exclude<BoardSortKey, 'rank'>,
+  (item: IndustryBoard) => string | number | null
+> = {
+  name: (item) => item.name,
+  changePercent: (item) => item.changePercent,
+  leadingStock: (item) => item.leadingStock,
+  stats: (item) =>
+    item.riseCount === null && item.fallCount === null
+      ? null
+      : (item.riseCount ?? 0) - (item.fallCount ?? 0),
+  turnoverRate: (item) => item.turnoverRate,
+};
 
 function sortBoards(list: IndustryBoard[], rankType: SortKey): IndustryBoard[] {
   const sorted = [...list];
@@ -58,6 +83,10 @@ export function Rankings() {
   const [industryFundFlows, setIndustryFundFlows] = useState<SectorFundFlowItem[]>([]);
   const [conceptFundFlows, setConceptFundFlows] = useState<SectorFundFlowItem[]>([]);
   const [stockFundFlows, setStockFundFlows] = useState<FundFlowRankItem[]>([]);
+  const [boardSorts, setBoardSorts] = useState<Record<'industry' | 'concept', BoardSort>>({
+    industry: null,
+    concept: null,
+  });
 
   const fetchFundFlows = useCallback(async () => {
     const [industry, concept, stocks] = await Promise.all([
@@ -76,13 +105,32 @@ export function Rankings() {
     immediate: true,
   });
 
-  const sections = useMemo(
-    () => [
-      { title: '行业板块', type: 'industry' as const, list: sortBoards(industryList, rankType) },
-      { title: '概念板块', type: 'concept' as const, list: sortBoards(conceptList, rankType) },
-    ],
-    [industryList, conceptList, rankType]
-  );
+  const sections = useMemo(() => {
+    const makeSection = (
+      title: string,
+      type: 'industry' | 'concept',
+      list: IndustryBoard[]
+    ) => {
+      const ranked = sortBoards(list, rankType).map((item, index) => ({ item, rank: index + 1 }));
+      const sort = boardSorts[type];
+      return {
+        title,
+        type,
+        list: sort
+          ? sortRows(
+              ranked,
+              (row) => sort.key === 'rank' ? row.rank : BOARD_SORT_GETTERS[sort.key](row.item),
+              sort.direction
+            )
+          : ranked,
+      };
+    };
+
+    return [
+      makeSection('行业板块', 'industry', industryList),
+      makeSection('概念板块', 'concept', conceptList),
+    ];
+  }, [boardSorts, conceptList, industryList, rankType]);
 
   const fundFlowSections = useMemo(
     () => [
@@ -107,6 +155,15 @@ export function Rankings() {
 
   const handleBoardClick = (code: string, type: 'industry' | 'concept') => {
     navigate(`/boards/${type}/${code}`);
+  };
+
+  const handleBoardSort = (type: 'industry' | 'concept', key: BoardSortKey) => {
+    setBoardSorts((current) => ({
+      ...current,
+      [type]: current[type]?.key === key
+        ? { key, direction: current[type].direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: key === 'rank' || key === 'name' || key === 'leadingStock' ? 'asc' : 'desc' },
+    }));
   };
 
   const handleFundFlowClick = (
@@ -134,16 +191,43 @@ export function Rankings() {
         {sections.map((section) => (
           <Card key={section.type} title={section.title} padding="sm">
             <div className={styles.rankTable}>
-              <div className={styles.tableHeader}>
-                <span className={styles.colRank}>排名</span>
-                <span className={styles.colName}>名称</span>
-                <span className={styles.colChange}>涨跌幅</span>
-                <span className={styles.colLeader}>领涨股</span>
-                <span className={styles.colStats}>涨/跌</span>
-                <span className={styles.colTurnover}>换手</span>
+              <div className={styles.tableHeader} role="row">
+                {([
+                  ['rank', '排名', styles.colRank],
+                  ['name', '名称', styles.colName],
+                  ['changePercent', '涨跌幅', styles.colChange],
+                  ['leadingStock', '领涨股', styles.colLeader],
+                  ['stats', '涨/跌', styles.colStats],
+                  ['turnoverRate', '换手', styles.colTurnover],
+                ] as const).map(([key, label, className]) => {
+                  const active = boardSorts[section.type]?.key === key;
+                  const direction = active ? boardSorts[section.type]?.direction : null;
+                  return (
+                    <span
+                      key={key}
+                      className={className}
+                      role="columnheader"
+                      aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                      <button
+                        type="button"
+                        className={styles.sortHeader}
+                        onClick={() => handleBoardSort(section.type, key)}
+                        aria-label={`${label}，${active ? (direction === 'asc' ? '升序' : '降序') : '未排序'}，点击切换排序`}
+                      >
+                        {label}
+                        {active ? (
+                          direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                        ) : (
+                          <ArrowUpDown size={12} />
+                        )}
+                      </button>
+                    </span>
+                  );
+                })}
               </div>
               <div className={styles.tableBody}>
-                {section.list.map((item, index) => (
+                {section.list.map(({ item, rank }, index) => (
                   <motion.div
                     key={item.code}
                     className={styles.tableRow}
@@ -153,8 +237,8 @@ export function Rankings() {
                     onClick={() => handleBoardClick(item.code, section.type)}
                   >
                     <span className={styles.colRank}>
-                      <span className={`${styles.rankNum} ${index < 3 ? styles.top3 : ''}`}>
-                        {index + 1}
+                      <span className={`${styles.rankNum} ${rank <= 3 ? styles.top3 : ''}`}>
+                        {rank}
                       </span>
                     </span>
                     <span className={styles.colName}>{item.name}</span>

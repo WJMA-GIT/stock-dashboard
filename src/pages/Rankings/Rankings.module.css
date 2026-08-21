@@ -118,6 +118,22 @@
   color: var(--text-tertiary);
 }
 
+.sortHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.sortHeader:hover,
+.sortHeader:focus-visible {
+  color: var(--text-primary);
+}
+
 .tableBody {
   display: flex;
   flex-direction: column;

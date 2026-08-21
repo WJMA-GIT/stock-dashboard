@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Check, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card, Tabs, Loading, Button, Empty, useToast } from '@/components/common';
 import {
   getIndustryConstituents,
@@ -29,6 +29,7 @@ import {
   formatYuanAmount,
   getChangeColorClass,
 } from '@/utils/format';
+import { sortRows, type SortDirection } from '@/utils/tableSort';
 import type {
   IndustryBoardConstituent,
   ConceptBoardConstituent,
@@ -41,6 +42,21 @@ import { LazyEChart } from '@/components/charts/LazyEChart';
 import styles from './BoardDetail.module.css';
 
 type BoardFundFlowHistoryRows = Awaited<ReturnType<typeof getSectorFundFlowHistory>>;
+type Constituent = IndustryBoardConstituent | ConceptBoardConstituent;
+type ConstituentSortKey = 'rank' | 'name' | 'price' | 'changePercent' | 'amount' | 'turnoverRate' | 'pe';
+
+const CONSTITUENT_SORT_GETTERS: Record<
+  ConstituentSortKey,
+  (stock: Constituent) => string | number | null
+> = {
+  rank: (stock) => stock.rank,
+  name: (stock) => stock.name,
+  price: (stock) => stock.price,
+  changePercent: (stock) => stock.changePercent,
+  amount: (stock) => stock.amount,
+  turnoverRate: (stock) => stock.turnoverRate,
+  pe: (stock) => stock.pe,
+};
 
 // K线周期
 const KLINE_PERIODS = [
@@ -62,7 +78,7 @@ export function BoardDetail() {
   );
 
   // 数据状态
-  const [constituents, setConstituents] = useState<(IndustryBoardConstituent | ConceptBoardConstituent)[]>([]);
+  const [constituents, setConstituents] = useState<Constituent[]>([]);
   const [klineData, setKlineData] = useState<(IndustryBoardKline | ConceptBoardKline)[]>([]);
   const [spotData, setSpotData] = useState<(IndustryBoardSpot | ConceptBoardSpot)[]>([]);
   const [fundFlowHistory, setFundFlowHistory] = useState<BoardFundFlowHistoryRows>([]);
@@ -71,6 +87,10 @@ export function BoardDetail() {
   const [loading, setLoading] = useState(true);
   const [klinePeriod, setKlinePeriod] = useState('daily');
   const [addedCodes, setAddedCodes] = useState<Set<string>>(new Set());
+  const [constituentSort, setConstituentSort] = useState<{
+    key: ConstituentSortKey;
+    direction: SortDirection;
+  } | null>(null);
 
   const isIndustry = type === 'industry';
   const boardInfo = useMemo(() => {
@@ -217,6 +237,17 @@ export function BoardDetail() {
   }, [klineData, chartColors]);
 
   const latestFundFlow = fundFlowHistory.at(-1) ?? null;
+  const visibleConstituents = useMemo(
+    () => (constituentSort
+      ? sortRows(
+          constituents,
+          CONSTITUENT_SORT_GETTERS[constituentSort.key],
+          constituentSort.direction
+        )
+      : constituents
+    ).slice(0, 50),
+    [constituentSort, constituents]
+  );
 
   const fundFlowChartOption = useMemo(() => {
     if (!fundFlowHistory.length) return {};
@@ -295,6 +326,13 @@ export function BoardDetail() {
   // 跳转个股
   const handleStockClick = (stockCode: string) => {
     navigate(`/s/${stockCode}`);
+  };
+
+  const handleConstituentSort = (key: ConstituentSortKey) => {
+    setConstituentSort((current) => current?.key === key
+      ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+      : { key, direction: key === 'rank' || key === 'name' ? 'asc' : 'desc' }
+    );
   };
 
   // 加入自选
@@ -466,18 +504,45 @@ export function BoardDetail() {
         {/* 成分股 */}
         <Card title={`成分股 (${constituents.length})`}>
           <div className={styles.stockTable}>
-            <div className={styles.tableHeader}>
-              <span className={styles.colRank}>排名</span>
-              <span className={styles.colName}>名称/代码</span>
-              <span className={styles.colPrice}>现价</span>
-              <span className={styles.colChangePercent}>涨跌幅</span>
-              <span className={styles.colAmount}>成交额</span>
-              <span className={styles.colTurnover}>换手</span>
-              <span className={styles.colPe}>PE</span>
+            <div className={styles.tableHeader} role="row">
+              {([
+                ['rank', '排名', styles.colRank],
+                ['name', '名称/代码', styles.colName],
+                ['price', '现价', styles.colPrice],
+                ['changePercent', '涨跌幅', styles.colChangePercent],
+                ['amount', '成交额', styles.colAmount],
+                ['turnoverRate', '换手', styles.colTurnover],
+                ['pe', 'PE', styles.colPe],
+              ] as const).map(([key, label, className]) => {
+                const active = constituentSort?.key === key;
+                const direction = active ? constituentSort.direction : null;
+                return (
+                  <span
+                    key={key}
+                    className={className}
+                    role="columnheader"
+                    aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  >
+                    <button
+                      type="button"
+                      className={styles.sortHeader}
+                      onClick={() => handleConstituentSort(key)}
+                      aria-label={`${label}，${active ? (direction === 'asc' ? '升序' : '降序') : '未排序'}，点击切换排序`}
+                    >
+                      {label}
+                      {active ? (
+                        direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      ) : (
+                        <ArrowUpDown size={12} />
+                      )}
+                    </button>
+                  </span>
+                );
+              })}
               <span className={styles.colAction}>操作</span>
             </div>
             <div className={styles.tableBody}>
-              {constituents.slice(0, 50).map((stock) => (
+              {visibleConstituents.map((stock) => (
                 <div
                   key={stock.code}
                   className={styles.tableRow}

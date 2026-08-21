@@ -5,10 +5,12 @@ import { useAppSettings } from '@/contexts';
 import { usePolling } from '@/hooks';
 import { getGlobalFuturesSpot } from '@/services/sdk';
 import { formatCompactNumber, formatPercent, formatPrice, getChangeColorClass } from '@/utils/format';
+import { sortRows, type SortDirection } from '@/utils/tableSort';
 import { filterFutures, type FuturesCategory } from './futuresFilter';
 import styles from './Futures.module.css';
 
 type Rows = Awaited<ReturnType<typeof getGlobalFuturesSpot>>;
+type SortKey = 'name' | 'price' | 'changePercent' | 'volume' | 'openInterest' | 'flow';
 
 const CATEGORY_TABS = [
   { key: 'all', label: '全部' },
@@ -18,10 +20,29 @@ const CATEGORY_TABS = [
   { key: 'agriculture', label: '农产品' },
 ];
 
+const COLUMNS: Array<{ key: SortKey; label: string }> = [
+  { key: 'name', label: '品种' },
+  { key: 'price', label: '最新价' },
+  { key: 'changePercent', label: '涨跌幅' },
+  { key: 'volume', label: '成交量' },
+  { key: 'openInterest', label: '持仓量' },
+  { key: 'flow', label: '多空成交' },
+];
+
+const SORT_VALUE: Record<SortKey, (row: Rows[number]) => string | number | null | undefined> = {
+  name: (row) => row.name,
+  price: (row) => row.price,
+  changePercent: (row) => row.changePercent,
+  volume: (row) => row.volume,
+  openInterest: (row) => row.openInterest,
+  flow: (row) => (row.buyVolume ?? 0) - (row.sellVolume ?? 0),
+};
+
 export function Futures() {
   const { getRefreshInterval } = useAppSettings();
   const [rows, setRows] = useState<Rows>([]);
   const [category, setCategory] = useState<FuturesCategory>('all');
+  const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({ key: 'volume', direction: 'desc' });
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
@@ -42,8 +63,8 @@ export function Futures() {
   });
 
   const visibleRows = useMemo(
-    () => filterFutures(rows, category).sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0)),
-    [category, rows]
+    () => sortRows(filterFutures(rows, category), SORT_VALUE[sort.key], sort.direction),
+    [category, rows, sort]
   );
   const ranked = [...visibleRows].filter((item) => item.changePercent !== null);
   const top = ranked.reduce<Rows[number] | null>((best, item) => !best || (item.changePercent ?? 0) > (best.changePercent ?? 0) ? item : best, null);
@@ -76,7 +97,25 @@ export function Futures() {
             </div>
             {visibleRows.length === 0 ? <Empty title="暂无该类期货行情" /> : (
               <div className={styles.tableWrap}>
-                <div className={styles.tableHeader}><span>品种</span><span>最新价</span><span>涨跌幅</span><span>成交量</span><span>持仓量</span><span>多空成交</span></div>
+                <div className={styles.tableHeader}>
+                  {COLUMNS.map((column) => {
+                    const active = sort.key === column.key;
+                    return (
+                      <span key={column.key} role="columnheader" aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <button
+                          className={styles.sortButton}
+                          aria-label={`${column.label}，${active ? `当前${sort.direction === 'asc' ? '升序' : '降序'}` : '未排序'}，点击排序`}
+                          onClick={() => setSort((current) => ({
+                            key: column.key,
+                            direction: current.key === column.key && current.direction === 'asc' ? 'desc' : 'asc',
+                          }))}
+                        >
+                          {column.label}<i aria-hidden="true">{active ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}</i>
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
                 {visibleRows.map((item) => {
                   const buy = item.buyVolume ?? 0;
                   const sell = item.sellVolume ?? 0;
