@@ -16,6 +16,7 @@ import {
 } from 'stock-sdk/indicators';
 import type {
   FundFlow,
+  FundFlowRankItem,
   FullQuote,
   HistoryKline,
   PanelLargeOrder,
@@ -24,7 +25,7 @@ import type {
 import { LazyEChart } from '@/components/charts/LazyEChart';
 import { getChartColors, type ChartColors } from '@/components/charts/chartTheme';
 import { getChipPriceColor } from './chipPriceColor';
-import { getMainFundFlowLabel } from './fundFlowDirection';
+import { findMainFundFlow, getMainFundFlowLabel } from './mainFundFlow';
 import { Button, Card, Empty, Loading, Tabs, useToast } from '@/components/common';
 import { useAppSettings } from '@/contexts';
 import { usePolling, useTheme } from '@/hooks';
@@ -34,6 +35,7 @@ import {
   getChipDistribution,
   getFullQuotes,
   getFundFlow,
+  getFundFlowRank,
   getHistoryKline,
   getIndividualFundFlow,
   getMinuteKline,
@@ -933,6 +935,7 @@ export function StockDetail() {
   const [minuteKline, setMinuteKline] = useState<MinuteKlineItem[]>([]);
   const [klineData, setKlineData] = useState<KlineDataItem[]>([]);
   const [fundFlow, setFundFlow] = useState<FundFlow | null>(null);
+  const [mainFundFlow, setMainFundFlow] = useState<FundFlowRankItem | null>(null);
   const [largeOrder, setLargeOrder] = useState<PanelLargeOrder | null>(null);
   const [individualFundFlowHistory, setIndividualFundFlowHistory] =
     useState<IndividualFundFlowRows>([]);
@@ -1155,11 +1158,13 @@ export function StockDetail() {
         [orderData],
         individualFundFlowData,
         northboundHoldingData,
+        fundFlowRanks,
       ] = await Promise.all([
         getFundFlow([normalizedCode]),
         getPanelLargeOrder([normalizedCode]),
         getIndividualFundFlow(normalizedCode, { period: 'daily' }),
         getNorthboundIndividual(normalizedCode),
+        getFundFlowRank({ indicator: 'today' }),
       ]);
 
       if (flowData) {
@@ -1168,6 +1173,7 @@ export function StockDetail() {
       if (orderData) {
         setLargeOrder(orderData);
       }
+      setMainFundFlow(findMainFundFlow(fundFlowRanks, normalizedCode));
 
       setIndividualFundFlowHistory(individualFundFlowData.slice(-8));
       setNorthboundHoldings(northboundHoldingData.slice(-8));
@@ -1659,9 +1665,9 @@ export function StockDetail() {
             <Card title="大单结构">
               <div className={styles.largeOrder}>
                 <div className={styles.mainFundFlow}>
-                  <span>{getMainFundFlowLabel(fundFlow?.mainNet)}</span>
-                  <strong className={getChangeColorClass(fundFlow?.mainNet)}>
-                    {formatAmount(fundFlow?.mainNet)}
+                  <span>{getMainFundFlowLabel(mainFundFlow?.mainNetInflow)}</span>
+                  <strong className={getChangeColorClass(mainFundFlow?.mainNetInflow)}>
+                    {formatYuanAmount(mainFundFlow?.mainNetInflow)}
                   </strong>
                 </div>
                 <div className={styles.orderSummary}>
