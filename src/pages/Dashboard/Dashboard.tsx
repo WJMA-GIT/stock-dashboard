@@ -7,15 +7,19 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { Card, Tabs, Loading, Empty, Button } from '@/components/common';
-import { usePolling } from '@/hooks';
+import { LazyEChart } from '@/components/charts/LazyEChart';
+import { getChartColors } from '@/components/charts/chartTheme';
+import { usePolling, useTheme } from '@/hooks';
 import { useBoardData, useAppSettings } from '@/contexts';
 import {
   getAllAShareQuotes,
   getFullQuotes,
   getFundFlowRank,
+  getIndustryMinuteKline,
   getMarketAmountComparison,
   getMarketFundFlow,
   getNorthboundFlowSummary,
+  getTodayTimeline,
   getUSQuotes,
 } from '@/services/sdk';
 import { getAllWatchlistCodes } from '@/services/storage';
@@ -32,6 +36,10 @@ import {
   rankMarketFundFlows,
   type FundFlowRankingKey,
 } from './marketFundFlowRanking';
+import {
+  buildMarketIntradayAnnotations,
+  type MarketIntradayAnnotation,
+} from './marketIntradayAnnotations';
 import styles from './Dashboard.module.css';
 
 // 主要指数
@@ -77,10 +85,16 @@ type NorthboundSummaryRows = Awaited<ReturnType<typeof getNorthboundFlowSummary>
 type MarketAmountComparison = Awaited<ReturnType<typeof getMarketAmountComparison>>;
 type USQuotes = Awaited<ReturnType<typeof getUSQuotes>>;
 type FundFlowRankRows = Awaited<ReturnType<typeof getFundFlowRank>>;
+type MarketTimeline = Awaited<ReturnType<typeof getTodayTimeline>>;
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { getRefreshInterval } = useAppSettings();
+  const { theme } = useTheme();
+  const { settings, getRefreshInterval } = useAppSettings();
+  const chartColors = useMemo(
+    () => getChartColors(theme, settings.colorMode),
+    [settings.colorMode, theme]
+  );
 
   // 使用共享的板块数据（优化：避免重复请求）
   const { industryList, conceptList, loading: boardLoading } = useBoardData();
@@ -101,6 +115,10 @@ export function Dashboard() {
   const [rankingTab, setRankingTab] = useState('rise');
   const [boardTab, setBoardTab] = useState<'industry' | 'concept'>('industry');
   const [initialLoading, setInitialLoading] = useState(true);
+  const [marketTimeline, setMarketTimeline] = useState<MarketTimeline | null>(null);
+  const [marketAnnotations, setMarketAnnotations] = useState<MarketIntradayAnnotation[]>([]);
+  const [marketIntradayLoading, setMarketIntradayLoading] = useState(true);
+  const [marketIntradayError, setMarketIntradayError] = useState(false);
 
   // 获取自选代码
   const watchlistCodes = getAllWatchlistCodes();
@@ -164,6 +182,48 @@ export function Dashboard() {
     setFundFlowRanksLoading(false);
   }, []);
 
+  const fetchMarketIntraday = useCallback(async () => {
+    if (industryList.length === 0) return;
+
+    try {
+      const timeline = await getTodayTimeline('sh000001');
+      const sortedBoards = [...industryList]
+        .filter((board) => board.changePercent !== null)
+        .sort((left, right) => (right.changePercent ?? 0) - (left.changePercent ?? 0));
+      const candidateBoards = [...sortedBoards.slice(0, 8), ...sortedBoards.slice(-8)]
+        .filter(
+          (board, index, boards) => boards.findIndex((item) => item.code === board.code) === index
+        );
+      const results = await Promise.allSettled(
+        candidateBoards.map(async (board) => ({
+          code: board.code,
+          name: board.name,
+          points: (await getIndustryMinuteKline(board.code, { period: '1' })).map((point) => ({
+            time: point.time.slice(-5),
+            price: point.close ?? ('price' in point ? point.price : null),
+          })),
+        }))
+      );
+      const candidates = results.flatMap((result) =>
+        result.status === 'fulfilled' ? [result.value] : []
+      );
+
+      setMarketTimeline(timeline);
+      setMarketAnnotations(
+        buildMarketIntradayAnnotations(
+          timeline.data.map((point) => ({ time: point.time, price: point.price })),
+          candidates
+        )
+      );
+      setMarketIntradayError(false);
+    } catch (error) {
+      console.error('Dashboard market intraday error:', error);
+      setMarketIntradayError(true);
+    } finally {
+      setMarketIntradayLoading(false);
+    }
+  }, [industryList]);
+
   // 初始加载
   useEffect(() => {
     fetchQuoteData();
@@ -171,6 +231,10 @@ export function Dashboard() {
     fetchMarketOverview();
     fetchMarketInsights();
   }, [fetchMarketInsights, fetchMarketOverview, fetchQuoteData, fetchUSIndices]);
+
+  useEffect(() => {
+    fetchMarketIntraday();
+  }, [fetchMarketIntraday]);
 
   // 轮询指数和自选数据（优化：只轮询需要实时更新的数据）
   usePolling(fetchQuoteData, {
@@ -194,6 +258,12 @@ export function Dashboard() {
   usePolling(fetchMarketInsights, {
     interval: breadthRefreshInterval,
     enabled: !initialLoading,
+    immediate: false,
+  });
+
+  usePolling(fetchMarketIntraday, {
+    interval: breadthRefreshInterval,
+    enabled: industryList.length > 0,
     immediate: false,
   });
 
@@ -288,6 +358,99 @@ export function Dashboard() {
     }));
   }, [fundFlowRankingItems, fundFlowRankingKey, rankingItems, rankingTab]);
 
+  const marketIntradayOption = useMemo(() => {
+    if (!marketTimeline) return {};
+
+    const annotationsByTime = new Map(marketAnnotations.map((item) => [item.time, item]));
+    const annotationSeries = (type: MarketIntradayAnnotation['type']) => ({
+      name: type === 'rise' ? '上涨异动' : '下跌异动',
+      type: 'scatter',
+      symbolSize: 14,
+      data: marketAnnotations
+        .filter((item) => item.type === type)
+        .map((item) => ({ value: [item.time, item.price], ...item })),
+      itemStyle: {
+        color: type === 'rise' ? chartColors.rise : chartColors.fall,
+        borderColor: chartColors.bgElevated,
+        borderWidth: 2,
+      },
+      label: {
+        show: true,
+        position: type === 'rise' ? 'top' : 'bottom',
+        color: chartColors.textPrimary,
+        backgroundColor: chartColors.bgElevated,
+        borderRadius: 3,
+        padding: [3, 5],
+        formatter: (params: { data: MarketIntradayAnnotation }) => params.data.name,
+      },
+      z: 5,
+    });
+
+    return {
+      animation: false,
+      grid: { left: 62, right: 28, top: 38, bottom: 38 },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+        formatter: (params: Array<{ axisValue?: string }>) => {
+          const time = String(params[0]?.axisValue ?? '');
+          const point = marketTimeline.data.find((item) => item.time === time);
+          const annotation = annotationsByTime.get(time);
+          const detail = annotation
+            ? `<br/><span style="color:${annotation.type === 'rise' ? chartColors.rise : chartColors.fall}">行业异动：${annotation.name} ${formatPercent(annotation.industryChangePercent)}</span>`
+            : '';
+          return `<strong>${time}</strong><br/>上证指数：${formatPrice(point?.price)}<br/>成交额：${formatYuanAmount(point?.amount)}${detail}`;
+        },
+      },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: marketTimeline.data.map((point) => point.time),
+        axisLine: { lineStyle: { color: chartColors.borderPrimary } },
+        axisLabel: { color: chartColors.textTertiary },
+        axisTick: { show: false },
+      },
+      yAxis: {
+        type: 'value',
+        scale: true,
+        axisLabel: { color: chartColors.textTertiary },
+        splitLine: { lineStyle: { color: chartColors.borderSecondary } },
+      },
+      series: [
+        {
+          name: '上证指数',
+          type: 'line',
+          data: marketTimeline.data.map((point) => point.price),
+          showSymbol: false,
+          smooth: 0.15,
+          lineStyle: { color: chartColors.accent, width: 1.5 },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: `${chartColors.accent}40` },
+                { offset: 1, color: `${chartColors.accent}05` },
+              ],
+            },
+          },
+          markLine: {
+            silent: true,
+            symbol: 'none',
+            lineStyle: { color: chartColors.textTertiary, type: 'dashed' },
+            label: { formatter: '昨收 {c}', color: chartColors.textTertiary },
+            data: [{ yAxis: marketTimeline.preClose }],
+          },
+        },
+        annotationSeries('rise'),
+        annotationSeries('fall'),
+      ],
+    };
+  }, [chartColors, marketAnnotations, marketTimeline]);
+
   // 只在初始加载时显示 loading，之后即使数据获取失败也显示页面
   if (initialLoading && boardLoading) {
     return <Loading fullScreen text="加载中..." />;
@@ -359,6 +522,33 @@ export function Dashboard() {
           </motion.div>
         ))}</div>
       </section>
+
+      <Card
+        title="大盘分时 · 行业异动"
+        extra={
+          <div className={styles.intradayLegend}>
+            <span className="text-rise">● 上涨区间强势行业</span>
+            <span className="text-fall">● 下跌区间弱势行业</span>
+          </div>
+        }
+      >
+        {marketIntradayLoading && !marketTimeline ? (
+          <Loading size="md" text="加载大盘分时..." />
+        ) : marketIntradayError && !marketTimeline ? (
+          <Empty title="大盘分时暂不可用" description="系统会自动重试" />
+        ) : marketTimeline?.data.length ? (
+          <>
+            <div className={styles.marketIntradayChart}>
+              <LazyEChart option={marketIntradayOption} notMerge />
+            </div>
+            <p className={styles.intradayNote}>
+              按 15 分钟识别显著涨跌区间，并标注同期涨幅最强或跌幅最深的行业；该标记反映行业强弱，不代表分钟主力资金流。
+            </p>
+          </>
+        ) : (
+          <Empty title="暂无当日分时数据" description="交易时段内将自动更新" />
+        )}
+      </Card>
 
       <section className={styles.statsGrid}>
         <Card title="市场涨跌">

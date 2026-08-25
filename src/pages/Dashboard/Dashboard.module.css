@@ -68,6 +68,24 @@
   gap: var(--spacing-md);
 }
 
+.marketIntradayChart {
+  height: 360px;
+}
+
+.intradayLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-xs);
+}
+
+.intradayNote {
+  margin-top: var(--spacing-sm);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
 .usIndexCard {
   cursor: default;
 }
@@ -373,6 +391,10 @@
 }
 
 @media (max-width: 768px) {
+  .marketIntradayChart {
+    height: 280px;
+  }
+
   .indices {
     grid-template-columns: repeat(2, 1fr);
   }
