@@ -82,10 +82,11 @@ export function formatAmount(value: number | null | undefined): string {
   if (value === null || value === undefined || isNaN(value)) {
     return '--';
   }
-  if (value >= 10000) {
+  const absValue = Math.abs(value);
+  if (absValue >= 10000) {
     return `${(value / 10000).toFixed(2)}亿`;
   }
-  if (value >= 1) {
+  if (absValue >= 1) {
     return `${value.toFixed(2)}万`;
   }
   return `${(value * 10000).toFixed(0)}元`;

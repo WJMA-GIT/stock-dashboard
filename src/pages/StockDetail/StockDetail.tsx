@@ -24,6 +24,7 @@ import type {
 import { LazyEChart } from '@/components/charts/LazyEChart';
 import { getChartColors, type ChartColors } from '@/components/charts/chartTheme';
 import { getChipPriceColor } from './chipPriceColor';
+import { getMainFundFlowLabel } from './fundFlowDirection';
 import { Button, Card, Empty, Loading, Tabs, useToast } from '@/components/common';
 import { useAppSettings } from '@/contexts';
 import { usePolling, useTheme } from '@/hooks';
@@ -1600,36 +1601,6 @@ export function StockDetail() {
         </div>
 
         <div className={styles.sideSection}>
-          <Card title="五档盘口">
-            <div className={styles.orderBook}>
-              <div className={styles.askSide}>
-                {[...Array(5)].map((_, index) => {
-                  const ask = quote.ask?.[4 - index];
-                  return (
-                    <div key={`ask-${index}`} className={styles.orderRow}>
-                      <span className={styles.orderLabel}>卖{5 - index}</span>
-                      <span className={`${styles.orderPrice} text-fall`}>
-                        {formatPrice(ask?.price)}
-                      </span>
-                      <span className={styles.orderVolume}>{ask?.volume ?? '--'}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className={styles.bidSide}>
-                {quote.bid?.slice(0, 5).map((bid, index) => (
-                  <div key={`bid-${index}`} className={styles.orderRow}>
-                    <span className={styles.orderLabel}>买{index + 1}</span>
-                    <span className={`${styles.orderPrice} text-rise`}>
-                      {formatPrice(bid?.price)}
-                    </span>
-                    <span className={styles.orderVolume}>{bid?.volume ?? '--'}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-
           {fundFlow && (
             <Card title="个股资金流">
               <div className={styles.fundFlow}>
@@ -1687,6 +1658,12 @@ export function StockDetail() {
           {largeOrder && (
             <Card title="大单结构">
               <div className={styles.largeOrder}>
+                <div className={styles.mainFundFlow}>
+                  <span>{getMainFundFlowLabel(fundFlow?.mainNet)}</span>
+                  <strong className={getChangeColorClass(fundFlow?.mainNet)}>
+                    {formatAmount(fundFlow?.mainNet)}
+                  </strong>
+                </div>
                 <div className={styles.orderSummary}>
                   <span className="text-rise">
                     买盘 <strong>{buySidePercent.toFixed(1)}%</strong>
