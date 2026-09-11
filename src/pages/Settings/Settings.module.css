@@ -193,10 +193,6 @@
   color: var(--text-primary);
 }
 
-.aboutDesc {
-  color: var(--text-secondary) !important;
-}
-
 .aboutNote {
   margin-top: var(--spacing-sm);
 }

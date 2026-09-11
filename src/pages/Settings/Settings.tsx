@@ -446,10 +446,6 @@ export function Settings() {
           </div>
           <div className={styles.sectionContent}>
             <div className={styles.aboutInfo}>
-              <p><strong>A 股看板</strong> v1.1.0</p>
-              <p className={styles.aboutDesc}>
-                纯前端行情看板，核心数据能力来自 <strong>stock-sdk v2</strong>。
-              </p>
               <p className={styles.aboutNote}>
                 <strong>数据说明：</strong>
               </p>

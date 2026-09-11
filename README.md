@@ -1,92 +1,111 @@
-# 股票看板
+<p align="center">
+  <img src="./public/readme-hero.svg" width="100%" alt="Stock Dashboard - 多市场行情洞察与资金流分析平台" />
+</p>
 
-一个基于 React + TypeScript 的 A 股数据看板项目，聚焦行情展示、筛选与自选管理，支持分时趋势、板块/行业视图和个股详情分析，适合用作日常盘中观察与快速筛选工具。
+<p align="center">
+  <a href="https://github.com/WJMA-GIT/stock-dashboard/actions/workflows/deploy-pages.yml"><img src="https://img.shields.io/github/actions/workflow/status/WJMA-GIT/stock-dashboard/deploy-pages.yml?branch=main&style=flat-square&label=build" alt="构建状态" /></a>
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=111827" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 5.9" />
+  <img src="https://img.shields.io/badge/stock--sdk-2.4.3-F43F5E?style=flat-square" alt="stock-sdk 2.4.3" />
+</p>
 
-体验链接：https://chengzuopeng.github.io/stock-dashboard/
+<p align="center">
+  面向盘中观察与复盘的多市场行情看板，把指数、资金、板块与个股信号收进一个清晰的工作台。
+</p>
 
-## 数据来源：stock-sdk
-项目的所有行情与数据接口由 [stock-sdk](https://stock-sdk.linkdiary.cn/) 提供。
-- 接入层：`src/services/sdk.ts`，封装缓存、重试与统一调用
-- 参考文档：`sdk.md`
-- 使用范围：实时行情、分时、板块/行业、选股与详情页数据
+<p align="center">
+  <a href="https://wjma-git.github.io/stock-dashboard/"><strong>在线体验</strong></a>
+  ·
+  <a href="https://github.com/WJMA-GIT/stock-dashboard/issues">问题反馈</a>
+</p>
 
-## 功能亮点
-- 看板总览：自选快照 + 市场信息汇总
-- 热力图：按行业/板块/自选维度查看市场热度
-- 板块详情：板块成分股与走势概览
-- 自选管理：分组管理、批量展示、快速添加
-- 尾盘选股：条件筛选 + 分时趋势图辅助判断
-- 个股详情：多周期图表、关键指标、资金与成交信息
+## 核心能力
 
-## 页面与模块说明
-- 总览：`/` - 自选快照、榜单入口
-- 热力图：`/heatmap` - 维度/指标可配置
-- 榜单：`/rankings` - 涨跌榜、成交榜等
-- 板块：`/boards` - 行业/概念板块列表与详情
-- 自选：`/watchlist` - 分组管理与行情列表
-- 尾盘选股：`/eod-picker` - 条件筛选与分时趋势
-- 个股详情：`/s/:code` - 价格、K 线、资金等
+| 市场全景 | 资金与板块 | 个股研究 | 交易线索 |
+| --- | --- | --- | --- |
+| A 股与美股指数概览 | 行业/概念资金流榜单 | 分时、K 线与对比走势 | 连板天梯与龙虎榜 |
+| 全市场成交额对比 | 板块热力图与详情 | 主力资金与大单结构 | 盘中异动与尾盘选股 |
+| 涨跌分布与市场榜单 | 大盘分时行业异动标记 | 筹码峰与融资融券 | 条件扫描与自选告警 |
+| 美股盘前、盘后观察 | 期货行情与资金结构 | 行业/概念穿透 | 自选分组与本地持久化 |
 
-## 数据与缓存策略
-- SDK 请求统一走 `src/services/sdk.ts`
-- 内存缓存（TTL）用于减少重复请求
-- 关键页面使用轮询刷新（如行情、分时）
+## 页面导航
 
-## 本地存储
-- 自选分组与配置：`src/services/storage.ts`
-- 常用设置、筛选条件与历史记录保存在 localStorage
+| 页面 | 路径 | 主要内容 |
+| --- | --- | --- |
+| 总览 | `/` | 指数、成交额、市场宽度、大盘分时、资金与热点 |
+| 热力图 | `/heatmap` | 行业、概念和自选维度的市场热度 |
+| 榜单 | `/rankings` | 涨跌、成交、行业/概念资金流与主力净流入 |
+| 连板天梯 | `/limit-up-ladder` | 涨停梯队、首板与行业分布 |
+| 板块 | `/boards` | 行业/概念列表、走势、资金流与成分股 |
+| 美股 | `/us-market` | 指数、盘前期指、盘后复盘、市场榜单与行业 ETF |
+| 龙虎榜 | `/dragon-tiger` | 按交易日查看上榜个股及买卖席位净额 |
+| 异动 | `/market-changes` | 盘中异动信号、类型筛选与个股定位 |
+| 期货 | `/futures` | 连续合约、品种涨跌与买卖结构 |
+| 自选 | `/watchlist` | 分组、批量管理、行情跟踪与本地告警 |
+| 扫描 | `/scanner` | 股票池、信号模板与条件扫描 |
+| 尾盘选股 | `/eod-picker` | 条件筛选与分时辅助判断 |
+| 个股详情 | `/s/:code` | 行情、走势、资金、大单、筹码与两融数据 |
 
-## 技术栈
-- React 19 + TypeScript
-- Vite
-- ECharts（echarts-for-react）
-- framer-motion
+## 技术架构
 
-## 项目结构
-- `src/pages`：功能页面（看板、自选、热力图、板块、选股、详情）
-- `src/components`：公共组件与布局
-- `src/services/sdk.ts`：stock-sdk 适配与缓存封装
-- `src/services/storage.ts`：本地配置与自选持久化
-- `src/utils`：格式化与通用工具
+```text
+React 19 + TypeScript + Vite
+├─ stock-sdk        行情与市场数据
+├─ ECharts          分时、K 线与资金图表
+├─ React Router     页面路由与详情穿透
+├─ Framer Motion    轻量交互动效
+└─ localStorage     自选、设置与筛选条件
+```
 
-## 开发
+数据请求统一由 `src/services/sdk.ts` 接入，集中处理缓存、重试与调用；关键行情页面按设置的刷新频率轮询。自选分组、告警及常用配置保存在浏览器本地，不依赖额外后端服务。
+
+## 快速开始
+
+环境要求：Node.js 20+、pnpm 10+。
+
 ```bash
+git clone https://github.com/WJMA-GIT/stock-dashboard.git
+cd stock-dashboard
 pnpm install
 pnpm dev
 ```
 
-## 构建
+浏览器访问 `http://localhost:5173`。
+
+## 常用命令
+
 ```bash
-pnpm build
+pnpm dev      # 启动开发服务器
+pnpm build    # 类型检查并构建生产版本
+pnpm lint     # 运行代码规范检查
+pnpm preview  # 本地预览生产构建
 ```
 
-## Lint
-```bash
-pnpm lint
-```
+## 项目结构
 
-## 本地预览
-```bash
-pnpm preview
+```text
+src/
+├─ components/      公共组件、图表与布局
+├─ contexts/        主题、设置与板块共享数据
+├─ hooks/           轮询、主题等通用逻辑
+├─ pages/           业务页面
+├─ router/          路由配置
+├─ services/        stock-sdk 适配与本地存储
+└─ utils/           格式化与通用工具
 ```
 
 ## 部署
 
-项目同时部署在两个平台，`base` 路径统一由 `VITE_BASE_URL` 环境变量控制，缺省为 `/`。
+仓库已配置 GitHub Pages 工作流：推送到 `main` 后自动安装依赖、构建并发布，站点路径由 `VITE_BASE_URL` 注入。`dist/404.html` 用于 GitHub Pages 下的 SPA 深链回退。
 
-### GitHub Pages
-`.github/workflows/deploy-pages.yml`，push 到 `main` 自动触发。workflow 注入 `VITE_BASE_URL=/stock-dashboard/`，`postbuild` 复制出的 `dist/404.html` 用于 SPA 深链回退。
+项目也保留了 `edgeone.json`，可在 EdgeOne Pages 使用相同构建产物部署到自定义域名。`GRAFANA_FARO_API_KEY` 为可选项，仅用于上传 sourcemap；未配置时不影响构建。
 
-- 地址：https://chengzuopeng.github.io/stock-dashboard/
+## 数据说明
 
-### EdgeOne Pages
-构建参数与 SPA 回退规则写在根目录 `edgeone.json`，控制台只需把框架预设设为「其他」、根目录设为 `/`。部署在自定义域名根路径，无需配置 `VITE_BASE_URL`。
+行情与市场数据由 [stock-sdk](https://stock-sdk.linkdiary.cn/) 提供。数据存在延迟、缺失或源站调整的可能，本项目仅用于信息展示与技术交流，不构成任何投资建议。
 
-- 地址：https://stock-dashboard.linkdiary.cn
+---
 
-### Sourcemap 上传
-两个平台均可选配 `GRAFANA_FARO_API_KEY` 环境变量，用于把 sourcemap 上传到 Grafana Faro（GitHub Actions 取自 `secrets.GRAFANA_SOURCEMAP_TOKEN`）。未配置时构建照常，仅线上错误堆栈不还原。
-
-## 说明
-- 代码与页面以 A 股为主要对象，部分模块可扩展到港股/美股
-- 若需修改刷新频率或缓存策略，可在 `src/services/sdk.ts` 调整
+<p align="center">
+  <sub>Built for focused market observation.</sub>
+</p>

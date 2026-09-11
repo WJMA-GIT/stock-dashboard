@@ -356,7 +356,7 @@ export function Header() {
           <Database size={18} />
         </a>
         <a
-          href="https://github.com/chengzuopeng/stock-dashboard"
+          href="https://github.com/WJMA-GIT/stock-dashboard"
           target="_blank"
           rel="noopener noreferrer"
           className={styles.githubLink}

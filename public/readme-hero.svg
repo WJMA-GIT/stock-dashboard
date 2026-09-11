@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="520" viewBox="0 0 1440 520" role="img" aria-labelledby="title desc">
+  <title id="title">Stock Dashboard</title>
+  <desc id="desc">多市场行情洞察与资金流分析平台</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#090D18"/>
+      <stop offset="0.55" stop-color="#101827"/>
+      <stop offset="1" stop-color="#15101D"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#FB7185"/>
+      <stop offset="0.55" stop-color="#F43F5E"/>
+      <stop offset="1" stop-color="#FB923C"/>
+    </linearGradient>
+    <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#F43F5E" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#F43F5E" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop stop-color="#F43F5E" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#F43F5E" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="20" flood-color="#000" flood-opacity=".35"/>
+    </filter>
+  </defs>
+  <rect width="1440" height="520" rx="28" fill="url(#bg)"/>
+  <circle cx="1180" cy="88" r="360" fill="url(#glow)"/>
+  <g opacity=".12" stroke="#94A3B8">
+    <path d="M0 104H1440M0 208H1440M0 312H1440M0 416H1440"/>
+    <path d="M240 0V520M480 0V520M720 0V520M960 0V520M1200 0V520"/>
+  </g>
+  <g transform="translate(92 72)">
+    <rect width="58" height="58" rx="15" fill="url(#line)"/>
+    <path d="M12 42 22 31l10 6 9-18 7 8" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="12" cy="42" r="3" fill="#fff"/><circle cx="22" cy="31" r="3" fill="#fff"/><circle cx="32" cy="37" r="3" fill="#fff"/><circle cx="41" cy="19" r="3" fill="#fff"/><circle cx="48" cy="27" r="3" fill="#fff"/>
+  </g>
+  <text x="92" y="216" fill="#F8FAFC" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="68" font-weight="700" letter-spacing="-2">Stock Dashboard</text>
+  <text x="95" y="267" fill="#CBD5E1" font-family="Microsoft YaHei,Segoe UI,Arial,sans-serif" font-size="25" letter-spacing="4">多市场行情洞察 · 资金流分析 · 交易线索追踪</text>
+  <g transform="translate(95 318)" font-family="Microsoft YaHei,Segoe UI,Arial,sans-serif" font-size="17">
+    <g><rect width="116" height="42" rx="21" fill="#1E293B" stroke="#334155"/><circle cx="24" cy="21" r="5" fill="#FB7185"/><text x="39" y="27" fill="#E2E8F0">市场全景</text></g>
+    <g transform="translate(132)"><rect width="116" height="42" rx="21" fill="#1E293B" stroke="#334155"/><circle cx="24" cy="21" r="5" fill="#38BDF8"/><text x="39" y="27" fill="#E2E8F0">板块资金</text></g>
+    <g transform="translate(264)"><rect width="116" height="42" rx="21" fill="#1E293B" stroke="#334155"/><circle cx="24" cy="21" r="5" fill="#A78BFA"/><text x="39" y="27" fill="#E2E8F0">个股研究</text></g>
+  </g>
+  <g transform="translate(775 104)" filter="url(#shadow)">
+    <rect width="565" height="326" rx="20" fill="#111827" stroke="#293548"/>
+    <circle cx="28" cy="27" r="5" fill="#F43F5E"/><circle cx="46" cy="27" r="5" fill="#FBBF24"/><circle cx="64" cy="27" r="5" fill="#34D399"/>
+    <text x="30" y="78" fill="#94A3B8" font-family="Microsoft YaHei,Segoe UI,Arial,sans-serif" font-size="14">市场趋势</text>
+    <text x="30" y="118" fill="#F8FAFC" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="34" font-weight="700">3,883.66</text>
+    <text x="205" y="116" fill="#FB7185" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16">+1.28%</text>
+    <path d="M30 260 72 248 113 268 154 225 196 236 238 184 279 205 320 156 362 173 404 118 446 145 487 91 535 106V292H30Z" fill="url(#area)"/>
+    <path d="M30 260 72 248 113 268 154 225 196 236 238 184 279 205 320 156 362 173 404 118 446 145 487 91 535 106" fill="none" stroke="url(#line)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <g fill="#F43F5E" stroke="#111827" stroke-width="3"><circle cx="154" cy="225" r="7"/><circle cx="320" cy="156" r="7"/><circle cx="487" cy="91" r="7"/></g>
+    <g font-family="Microsoft YaHei,Segoe UI,Arial,sans-serif" font-size="12" fill="#CBD5E1">
+      <g transform="translate(115 185)"><rect width="78" height="27" rx="7" fill="#263244"/><text x="11" y="18">电子 · 流入</text></g>
+      <g transform="translate(281 116)"><rect width="78" height="27" rx="7" fill="#263244"/><text x="11" y="18">通信 · 异动</text></g>
+      <g transform="translate(448 51)"><rect width="78" height="27" rx="7" fill="#263244"/><text x="11" y="18">科技 · 领涨</text></g>
+    </g>
+  </g>
+  <text x="95" y="446" fill="#64748B" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" letter-spacing="2">REACT · TYPESCRIPT · ECHARTS · STOCK-SDK</text>
+</svg>
