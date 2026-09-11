@@ -39,8 +39,8 @@ importers:
         specifier: ^7.12.0
         version: 7.12.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       stock-sdk:
-        specifier: ^2.4.2
-        version: 2.4.2
+        specifier: ^2.4.3
+        version: 2.4.3
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.1
@@ -1317,8 +1317,8 @@ packages:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
 
-  stock-sdk@2.4.2:
-    resolution: {integrity: sha512-tLtQSQZ1SmvkDNIbFpWABgpAvK2Iu2yDf3AoGtlKWe8rYSXMziOoMXXbf9b1KU7iIXR1G5AU/a8xeB7/37eutw==}
+  stock-sdk@2.4.3:
+    resolution: {integrity: sha512-dVSt4XcX4PkjM3bMRue6rX6i+GggeKBcWX1NgDAPH+cc6UgYu87puAt2oeYlO8HXsX8q/M1P5GqJ+2kfd7T9VA==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -2678,7 +2678,7 @@ snapshots:
 
   source-map-js@1.2.1: {}
 
-  stock-sdk@2.4.2: {}
+  stock-sdk@2.4.3: {}
 
   strip-json-comments@3.1.1: {}
 
