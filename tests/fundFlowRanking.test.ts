@@ -19,3 +19,14 @@ test('splits the largest inflows and outflows without mutating the source', () =
   assert.deepEqual(result.outflows.map((row) => row.code), ['out-2', 'out-1']);
   assert.deepEqual(rows.map((row) => row.code), originalOrder);
 });
+
+test('defaults to the top 50 rows on each side', () => {
+  const rows = Array.from({ length: 120 }, (_, index) => ({
+    code: String(index),
+    mainNetInflow: index < 60 ? index + 1 : 59 - index,
+  }));
+  const result = splitFundFlowRanks(rows);
+
+  assert.equal(result.inflows.length, 50);
+  assert.equal(result.outflows.length, 50);
+});

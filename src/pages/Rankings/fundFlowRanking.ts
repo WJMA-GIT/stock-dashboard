@@ -1,6 +1,6 @@
 export function splitFundFlowRanks<T extends { mainNetInflow: number | null }>(
   items: T[],
-  limit = 10
+  limit = 50
 ) {
   const ranked = items
     .filter((item): item is T & { mainNetInflow: number } => item.mainNetInflow !== null)

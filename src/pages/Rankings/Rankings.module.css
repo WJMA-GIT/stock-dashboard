@@ -45,6 +45,8 @@
 .flowList {
   display: flex;
   flex-direction: column;
+  max-height: 530px;
+  overflow-y: auto;
 }
 
 .flowRow {
