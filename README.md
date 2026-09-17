@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/chengzuopeng/stock-dashboard">修改自</a>
+  <a href="https://github.com/chengzuopeng/stock-dashboard"><img src="https://github.githubassets.com/favicons/favicon.svg" width="16" height="16" alt="GitHub" align="absmiddle" /> chengzuopeng/stock-dashboard</a>
   ·
   <a href="https://wjma-git.github.io/stock-dashboard/"><strong>在线体验</strong></a>
   ·
