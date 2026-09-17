@@ -17,6 +17,7 @@ import {
   ListTree,
   Trophy,
   ChartCandlestick,
+  ShieldAlert,
 } from 'lucide-react';
 import { Logo } from '@/components/common';
 import styles from './Sidebar.module.css';
@@ -36,6 +37,7 @@ const navItems: NavItem[] = [
   { path: '/us-market', label: '美股', icon: <CircleDollarSign size={18} /> },
   { path: '/dragon-tiger', label: '龙虎榜', icon: <Trophy size={18} /> },
   { path: '/market-changes', label: '异动', icon: <Activity size={18} /> },
+  { path: '/regulatory-trigger', label: '触发监管', icon: <ShieldAlert size={18} /> },
   { path: '/futures', label: '期货', icon: <ChartCandlestick size={18} /> },
   { path: '/watchlist', label: '自选', icon: <Star size={18} /> },
   { path: '/scanner', label: '扫描', icon: <TrendingUp size={18} /> },

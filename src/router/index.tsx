@@ -34,6 +34,9 @@ const DragonTiger = lazy(() =>
 const MarketChanges = lazy(() =>
   import('@/pages/MarketChanges').then((mod) => ({ default: mod.MarketChanges }))
 );
+const RegulatoryTrigger = lazy(() =>
+  import('@/pages/RegulatoryTrigger/RegulatoryTrigger').then((mod) => ({ default: mod.RegulatoryTrigger }))
+);
 const LimitUpLadder = lazy(() =>
   import('@/pages/LimitUpLadder').then((mod) => ({ default: mod.LimitUpLadder }))
 );
@@ -102,6 +105,10 @@ const browserRouter = createBrowserRouter(
         {
           path: 'market-changes',
           element: withSuspense(<MarketChanges />),
+        },
+        {
+          path: 'regulatory-trigger',
+          element: withSuspense(<RegulatoryTrigger />),
         },
         {
           path: 'futures',

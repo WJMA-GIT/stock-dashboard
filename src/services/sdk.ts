@@ -10,7 +10,11 @@
 import { StockSDK } from 'stock-sdk';
 import { calcChipDistribution } from 'stock-sdk/indicators';
 import type { CacheItem } from '@/types';
-import type { DividendDetail, SearchResult as SDKSearchResult } from 'stock-sdk';
+import type {
+  DividendDetail,
+  SearchResult as SDKSearchResult,
+  UnusualFluctuationOptions,
+} from 'stock-sdk';
 import { normalizeStockCode } from '@/utils/format';
 import { getComparableTradingTime, sumMinuteAmount } from './marketAmountComparison';
 import { parseStockBoardMembership, type StockBoardRef } from './stockBoardMembership';
@@ -104,6 +108,7 @@ const DEFAULT_TTL = {
   northbound: 30000, // 北向资金 30s
   stockChanges: 15000, // 异动池 15s
   boardChanges: 30000, // 板块异动 30s
+  unusualFluctuation: 3600000, // 监管异动为盘后日频数据，缓存 1h
   dragonTiger: 3600000, // 龙虎榜 1h
   blockTrade: 3600000, // 大宗交易 1h
   margin: 21600000, // 融资融券 6h
@@ -734,6 +739,22 @@ export async function getStockChanges(
 export async function getBoardChanges() {
   const key = getCacheKey('getBoardChanges');
   return withCache(key, DEFAULT_TTL.boardChanges, () => sdk.marketEvent.boardChanges());
+}
+
+/**
+ * 获取监管异动
+ */
+export async function getUnusualFluctuation(options?: UnusualFluctuationOptions) {
+  const key = getCacheKey(
+    'getUnusualFluctuation',
+    options?.date,
+    options?.startDate,
+    options?.endDate,
+    options?.triggered
+  );
+  return withCache(key, DEFAULT_TTL.unusualFluctuation, () =>
+    sdk.marketEvent.unusualFluctuation(options)
+  );
 }
 
 /**
