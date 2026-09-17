@@ -20,18 +20,16 @@
 .searchField input::placeholder { color: var(--text-muted); }
 .tableWrap { overflow-x: auto; }
 .stream { min-width: 980px; }
-.streamHeader, .dataRow { display: grid; grid-template-columns: 90px 140px 130px 105px 105px 85px minmax(260px, 1fr); align-items: center; gap: var(--spacing-md); }
+.streamHeader, .dataRow { display: grid; grid-template-columns: 90px 140px 105px 105px 105px 85px minmax(260px, 1fr); align-items: center; gap: var(--spacing-md); }
 .streamHeader { padding: 10px var(--spacing-lg); color: var(--text-tertiary); font-size: var(--font-size-xs); background: var(--bg-tertiary); }
 .sortButton { display: flex; align-items: center; gap: 4px; width: 100%; color: inherit; text-align: left; }
 .sortButton:hover { color: var(--text-primary); }
 .sortButton i { color: var(--color-accent); font-style: normal; }
 .dataRow { width: 100%; padding: var(--spacing-md) var(--spacing-lg); color: var(--text-primary); text-align: left; border-bottom: 1px solid var(--border-secondary); transition: background var(--transition-fast); }
 .dataRow:hover { background: var(--bg-tertiary); }
-.statusTag, .directionTag { justify-self: start; padding: 3px 8px; font-size: var(--font-size-xs); border-radius: var(--radius-sm); white-space: nowrap; }
+.statusTag { justify-self: start; padding: 3px 8px; font-size: var(--font-size-xs); border-radius: var(--radius-sm); white-space: nowrap; }
 .statusTag.triggered { color: var(--color-rise); background: var(--color-rise-bg); }
 .statusTag.approaching { color: var(--color-warning); background: var(--color-warning-bg); }
-.directionTag.up { color: var(--color-rise); background: var(--color-rise-bg); }
-.directionTag.down { color: var(--color-fall); background: var(--color-fall-bg); }
 .stock { display: flex; flex-direction: column; min-width: 0; }
 .stock strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stock small { color: var(--text-tertiary); font-family: var(--font-mono); }

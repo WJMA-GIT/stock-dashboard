@@ -12,7 +12,7 @@ import styles from './RegulatoryTrigger.module.css';
 type Rows = Awaited<ReturnType<typeof getUnusualFluctuation>>;
 type StatusFilter = 'all' | 'triggered' | 'approaching';
 type DirectionFilter = 'all' | 'up' | 'down';
-type SortKey = 'status' | 'stock' | 'direction' | 'deviation' | 'target' | 'window' | 'rule';
+type SortKey = 'status' | 'stock' | 'changePercent' | 'deviation' | 'target' | 'window' | 'rule';
 
 const STATUS_TABS = [
   { key: 'all', label: '全部' },
@@ -23,7 +23,7 @@ const STATUS_TABS = [
 const COLUMNS: Array<{ key: SortKey; label: string }> = [
   { key: 'status', label: '监管状态' },
   { key: 'stock', label: '股票' },
-  { key: 'direction', label: '异动方向' },
+  { key: 'changePercent', label: '涨跌幅' },
   { key: 'deviation', label: '累计偏离' },
   { key: 'target', label: '目标阈值' },
   { key: 'window', label: '统计区间' },
@@ -33,7 +33,7 @@ const COLUMNS: Array<{ key: SortKey; label: string }> = [
 const SORT_VALUE: Record<SortKey, (row: Rows[number]) => string | number | null | undefined> = {
   status: (row) => Number(row.triggered),
   stock: (row) => `${row.name}${row.code}`,
-  direction: (row) => `${row.direction}${row.changePercent ?? ''}`,
+  changePercent: (row) => row.changePercent,
   deviation: (row) => row.deviationValue,
   target: (row) => row.targetChangePercent,
   window: (row) => row.windowDays,
@@ -194,9 +194,7 @@ export function RegulatoryTrigger() {
                     {item.triggered ? '已触发' : '逼近阈值'}
                   </span>
                   <span className={styles.stock}><strong>{item.name}</strong><small>{item.code}</small></span>
-                  <span className={`${styles.directionTag} ${styles[item.direction]}`}>
-                    {item.direction === 'up' ? '上涨' : '下跌'} {formatPercent(item.changePercent)}
-                  </span>
+                  <span className={getChangeColorClass(item.changePercent)}>{formatPercent(item.changePercent)}</span>
                   <strong className={getChangeColorClass(item.deviationValue)}>{formatPercent(item.deviationValue)}</strong>
                   <span className={getChangeColorClass(item.targetChangePercent)}>{formatPercent(item.targetChangePercent)}</span>
                   <span>{item.windowDays == null ? '--' : `${item.windowDays}日`}</span>
