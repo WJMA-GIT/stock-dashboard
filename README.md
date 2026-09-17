@@ -6,7 +6,7 @@
   <a href="https://github.com/WJMA-GIT/stock-dashboard/actions/workflows/deploy-pages.yml"><img src="https://img.shields.io/github/actions/workflow/status/WJMA-GIT/stock-dashboard/deploy-pages.yml?branch=main&style=flat-square&label=build" alt="构建状态" /></a>
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=111827" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 5.9" />
-  <img src="https://img.shields.io/badge/stock--sdk-2.4.3-F43F5E?style=flat-square" alt="stock-sdk 2.4.3" />
+  <img src="https://img.shields.io/badge/stock--sdk-2.4.4-F43F5E?style=flat-square" alt="stock-sdk 2.4.4" />
 </p>
 
 <p align="center">
