@@ -48,7 +48,7 @@ export function RegulatoryTrigger() {
   const navigate = useNavigate();
   const { getRefreshInterval } = useAppSettings();
   const [rows, setRows] = useState<Rows>([]);
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(() => shanghaiDate(new Date()));
   const [status, setStatus] = useState<StatusFilter>('all');
   const [direction, setDirection] = useState<DirectionFilter>('all');
   const [keyword, setKeyword] = useState('');
@@ -59,15 +59,8 @@ export function RegulatoryTrigger() {
   const fetchData = useCallback(async () => {
     setError(false);
     try {
-      const result = selectedDate
-        ? await getUnusualFluctuation({ date: selectedDate })
-        : await getUnusualFluctuation({
-            startDate: shanghaiDate(new Date(Date.now() - 29 * 86400000)),
-            endDate: shanghaiDate(new Date()),
-          });
-      const latestDate = result.reduce((latest, item) => item.date > latest ? item.date : latest, '');
-      setRows(selectedDate || !latestDate ? result : result.filter((item) => item.date === latestDate));
-      if (!selectedDate) setSelectedDate(latestDate || shanghaiDate(new Date()));
+      const result = await getUnusualFluctuation({ date: selectedDate });
+      setRows(result);
     } catch (fetchError) {
       console.error('Regulatory trigger fetch error:', fetchError);
       setError(true);

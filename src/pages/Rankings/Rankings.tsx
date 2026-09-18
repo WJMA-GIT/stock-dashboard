@@ -17,7 +17,14 @@ import {
 import { Card, Tabs, Loading } from '@/components/common';
 import { useAppSettings, useBoardData } from '@/contexts';
 import { usePolling } from '@/hooks';
-import { getFundFlowRank, getSectorFundFlowRank } from '@/services/sdk';
+import {
+  getFullQuotes,
+  getFundFlowRank,
+  getSectorFundFlowRank,
+  getStockBoardMembership,
+} from '@/services/sdk';
+import { getAllWatchlistCodes } from '@/services/storage';
+import { groupWatchlistQuotesByBoard } from '@/services/stockBoardMembership';
 import {
   formatPercent,
   formatTurnover,
@@ -83,20 +90,36 @@ export function Rankings() {
   const [industryFundFlows, setIndustryFundFlows] = useState<SectorFundFlowItem[]>([]);
   const [conceptFundFlows, setConceptFundFlows] = useState<SectorFundFlowItem[]>([]);
   const [stockFundFlows, setStockFundFlows] = useState<FundFlowRankItem[]>([]);
+  const [watchlistByBoard, setWatchlistByBoard] = useState<ReturnType<typeof groupWatchlistQuotesByBoard>>({});
   const [boardSorts, setBoardSorts] = useState<Record<'industry' | 'concept', BoardSort>>({
     industry: null,
     concept: null,
   });
 
   const fetchFundFlows = useCallback(async () => {
-    const [industry, concept, stocks] = await Promise.all([
+    const watchlistCodes = getAllWatchlistCodes();
+    const [industry, concept, stocks, watchlistQuotes, membershipResults] = await Promise.all([
       getSectorFundFlowRank({ indicator: 'today', sectorType: 'industry' }),
       getSectorFundFlowRank({ indicator: 'today', sectorType: 'concept' }),
       getFundFlowRank({ indicator: 'today' }),
+      watchlistCodes.length
+        ? getFullQuotes(watchlistCodes).catch((error) => {
+            console.error('Watchlist quotes fetch error:', error);
+            return [];
+          })
+        : Promise.resolve([]),
+      Promise.allSettled(watchlistCodes.map(async (stockCode) => ({
+        stockCode,
+        ...await getStockBoardMembership(stockCode),
+      }))),
     ]);
     setIndustryFundFlows(industry);
     setConceptFundFlows(concept);
     setStockFundFlows(stocks);
+    setWatchlistByBoard(groupWatchlistQuotesByBoard(
+      watchlistQuotes,
+      membershipResults.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])
+    ));
   }, []);
 
   const { isLoading: fundFlowLoading } = usePolling(fetchFundFlows, {
@@ -196,10 +219,12 @@ export function Rankings() {
                   ['rank', '排名', styles.colRank],
                   ['name', '名称', styles.colName],
                   ['changePercent', '涨跌幅', styles.colChange],
+                  ['watchlist', '自选股', styles.colWatchlist],
                   ['leadingStock', '领涨股', styles.colLeader],
                   ['stats', '涨/跌', styles.colStats],
                   ['turnoverRate', '换手', styles.colTurnover],
                 ] as const).map(([key, label, className]) => {
+                  if (key === 'watchlist') return <span key={key} className={className}>{label}</span>;
                   const active = boardSorts[section.type]?.key === key;
                   const direction = active ? boardSorts[section.type]?.direction : null;
                   return (
@@ -244,6 +269,21 @@ export function Rankings() {
                     <span className={styles.colName}>{item.name}</span>
                     <span className={`${styles.colChange} ${getChangeColorClass(item.changePercent)}`}>
                       {formatPercent(item.changePercent)}
+                    </span>
+                    <span className={styles.colWatchlist}>
+                      {watchlistByBoard[item.code]?.map((stock) => (
+                        <button
+                          key={stock.code}
+                          type="button"
+                          className={`${styles.watchlistStock} ${getChangeColorClass(stock.changePercent)}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            navigate(`/s/${stock.code}`);
+                          }}
+                        >
+                          {stock.name} {formatPercent(stock.changePercent)}
+                        </button>
+                      ))}
                     </span>
                     <div className={styles.colLeader}>
                       <span className={styles.leaderName}>{item.leadingStock}</span>
