@@ -21,7 +21,7 @@ import {
   getFullQuotes,
   getFundFlowRank,
   getSectorFundFlowRank,
-  getStockBoardMembership,
+  getStocksBoardMembership,
 } from '@/services/sdk';
 import { getAllWatchlistCodes } from '@/services/storage';
 import { groupWatchlistQuotesByBoard } from '@/services/stockBoardMembership';
@@ -91,39 +91,48 @@ export function Rankings() {
   const [conceptFundFlows, setConceptFundFlows] = useState<SectorFundFlowItem[]>([]);
   const [stockFundFlows, setStockFundFlows] = useState<FundFlowRankItem[]>([]);
   const [watchlistByBoard, setWatchlistByBoard] = useState<ReturnType<typeof groupWatchlistQuotesByBoard>>({});
+  const [watchlistLoaded, setWatchlistLoaded] = useState(false);
   const [boardSorts, setBoardSorts] = useState<Record<'industry' | 'concept', BoardSort>>({
     industry: null,
     concept: null,
   });
 
   const fetchFundFlows = useCallback(async () => {
-    const watchlistCodes = getAllWatchlistCodes();
-    const [industry, concept, stocks, watchlistQuotes, membershipResults] = await Promise.all([
+    const [industry, concept, stocks] = await Promise.all([
       getSectorFundFlowRank({ indicator: 'today', sectorType: 'industry' }),
       getSectorFundFlowRank({ indicator: 'today', sectorType: 'concept' }),
       getFundFlowRank({ indicator: 'today' }),
-      watchlistCodes.length
-        ? getFullQuotes(watchlistCodes).catch((error) => {
-            console.error('Watchlist quotes fetch error:', error);
-            return [];
-          })
-        : Promise.resolve([]),
-      Promise.allSettled(watchlistCodes.map(async (stockCode) => ({
-        stockCode,
-        ...await getStockBoardMembership(stockCode),
-      }))),
     ]);
     setIndustryFundFlows(industry);
     setConceptFundFlows(concept);
     setStockFundFlows(stocks);
-    setWatchlistByBoard(groupWatchlistQuotesByBoard(
-      watchlistQuotes,
-      membershipResults.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])
-    ));
+  }, []);
+
+  const fetchWatchlistBoards = useCallback(async () => {
+    const watchlistCodes = getAllWatchlistCodes();
+    try {
+      if (watchlistCodes.length === 0) {
+        setWatchlistByBoard({});
+        return;
+      }
+      const [quotes, memberships] = await Promise.all([
+        getFullQuotes(watchlistCodes),
+        getStocksBoardMembership(watchlistCodes),
+      ]);
+      setWatchlistByBoard(groupWatchlistQuotesByBoard(quotes, memberships));
+    } finally {
+      setWatchlistLoaded(true);
+    }
   }, []);
 
   const { isLoading: fundFlowLoading } = usePolling(fetchFundFlows, {
     interval: Math.max(getRefreshInterval('list') * 4, 60000),
+    pauseOnHidden: true,
+    immediate: true,
+  });
+
+  usePolling(fetchWatchlistBoards, {
+    interval: Math.max(getRefreshInterval('list'), 5000),
     pauseOnHidden: true,
     immediate: true,
   });
@@ -196,7 +205,7 @@ export function Rankings() {
     navigate(type === 'stock' ? `/s/${code}` : `/boards/${type}/${code}`);
   };
 
-  if (loading) {
+  if (loading || !watchlistLoaded) {
     return <Loading fullScreen text="加载榜单数据..." />;
   }
 
@@ -327,7 +336,7 @@ export function Rankings() {
                         <button
                           key={item.code}
                           type="button"
-                          className={styles.flowRow}
+                          className={`${styles.flowRow} ${section.type === 'stock' ? '' : styles.flowBoardRow}`}
                           onClick={() => handleFundFlowClick(item.code, section.type)}
                         >
                           <span className={`${styles.rankNum} ${index < 3 ? styles.top3 : ''}`}>
@@ -337,6 +346,18 @@ export function Rankings() {
                             <span>{item.name}</span>
                             <span>{item.code}</span>
                           </span>
+                          {section.type !== 'stock' && (
+                            <span className={styles.flowWatchlist}>
+                              {watchlistByBoard[item.code]?.map((stock) => (
+                                <span
+                                  key={stock.code}
+                                  className={`${styles.watchlistStock} ${getChangeColorClass(stock.changePercent)}`}
+                                >
+                                  {stock.name} {formatPercent(stock.changePercent)}
+                                </span>
+                              ))}
+                            </span>
+                          )}
                           <span className={styles.flowValue}>
                             <span className={getChangeColorClass(item.mainNetInflow)}>
                               {formatYuanAmount(item.mainNetInflow)}

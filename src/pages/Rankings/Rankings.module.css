@@ -62,6 +62,17 @@
   transition: background var(--transition-fast);
 }
 
+.flowBoardRow {
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1.5fr) auto;
+}
+
+.flowWatchlist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
 .flowRow:hover {
   background: var(--bg-tertiary);
 }

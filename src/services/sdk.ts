@@ -17,7 +17,11 @@ import type {
 } from 'stock-sdk';
 import { normalizeStockCode } from '@/utils/format';
 import { getComparableTradingTime, sumMinuteAmount } from './marketAmountComparison';
-import { parseStockBoardMembership, type StockBoardRef } from './stockBoardMembership';
+import {
+  parseStockBoardMembership,
+  parseStocksBoardMembership,
+  type StockBoardRef,
+} from './stockBoardMembership';
 
 export type SearchEntityType = 'stock' | 'industry' | 'concept' | 'unsupported';
 
@@ -406,27 +410,43 @@ export async function getTodayTimeline(code: string) {
 
 // ========== 板块 API ==========
 
-/** 获取个股所属行业与精确概念（SDK 暂无该元数据端点） */
-export async function getStockBoardMembership(symbol: string) {
-  const normalized = normalizeStockCode(symbol);
-  const code = normalized.replace(/\D/g, '').slice(-6);
-  const market = normalized.startsWith('sh') ? 'SH' : normalized.startsWith('bj') ? 'BJ' : 'SZ';
-  const key = getCacheKey('getStockBoardMembership', code, market);
-  return withCache(key, DEFAULT_TTL.boardList, async () => {
-    const params = new URLSearchParams({
-      reportName: 'RPT_F10_CORETHEME_BOARDTYPE',
-      columns: 'ALL',
-      filter: `(SECUCODE="${code}.${market}")`,
-      pageNumber: '1',
-      pageSize: '200',
-    });
-    const response = await fetch(`https://datacenter-web.eastmoney.com/api/data/v1/get?${params}`, {
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok) throw new Error(`Board metadata request failed: ${response.status}`);
-    const payload = await response.json() as { result?: { data?: Parameters<typeof parseStockBoardMembership>[0] } };
-    return parseStockBoardMembership(payload.result?.data ?? []);
+/** 批量获取个股所属板块（SDK 暂无该元数据端点） */
+export async function getStocksBoardMembership(symbols: string[]) {
+  const secucodes = symbols.map((symbol) => {
+    const normalized = normalizeStockCode(symbol);
+    const code = normalized.replace(/\D/g, '').slice(-6);
+    const market = normalized.startsWith('sh') ? 'SH' : normalized.startsWith('bj') ? 'BJ' : 'SZ';
+    return `${code}.${market}`;
   });
+  const key = getCacheKey('getStocksBoardMembership', secucodes);
+  return withCache(key, DEFAULT_TTL.boardList, async () => {
+    const chunks = Array.from({ length: Math.ceil(secucodes.length / 100) }, (_, index) =>
+      secucodes.slice(index * 100, (index + 1) * 100)
+    );
+    const rows = (await Promise.all(chunks.map(async (chunk) => {
+      const params = new URLSearchParams({
+        reportName: 'RPT_F10_CORETHEME_BOARDTYPE',
+        columns: 'SECUCODE,NEW_BOARD_CODE,BOARD_NAME,BOARD_RANK,IS_PRECISE',
+        filter: `(SECUCODE in (${chunk.map((code) => `"${code}"`).join(',')}))`,
+        pageNumber: '1',
+        pageSize: '5000',
+      });
+      const response = await fetch(`https://datacenter-web.eastmoney.com/api/data/v1/get?${params}`, {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) throw new Error(`Board metadata request failed: ${response.status}`);
+      const payload = await response.json() as { result?: { data?: Parameters<typeof parseStocksBoardMembership>[0] } };
+      return payload.result?.data ?? [];
+    }))).flat();
+    return parseStocksBoardMembership(rows);
+  });
+}
+
+/** 获取单只个股所属行业与精确概念 */
+export async function getStockBoardMembership(symbol: string) {
+  const [membership] = await getStocksBoardMembership([symbol]);
+  const { industry, concepts } = membership ?? parseStockBoardMembership([]);
+  return { industry, concepts };
 }
 
 export async function getBoardOptions(): Promise<StockBoardRef[]> {

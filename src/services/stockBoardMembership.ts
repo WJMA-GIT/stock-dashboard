@@ -12,11 +12,11 @@ interface WatchlistQuote {
 
 interface WatchlistMembership {
   stockCode: string;
-  industry: StockBoardRef | null;
-  concepts: StockBoardRef[];
+  boards: StockBoardRef[];
 }
 
 interface RawBoardRow {
+  SECUCODE?: string;
   NEW_BOARD_CODE?: string;
   BOARD_NAME?: string;
   BOARD_RANK?: number | string;
@@ -31,8 +31,11 @@ export function parseStockBoardMembership(rows: RawBoardRow[]) {
   });
   const industryRow = rows.find((row) => Number(row.BOARD_RANK) === 1);
   const concepts = rows
-    .filter((row) => String(row.IS_PRECISE) === '1' && Number(row.BOARD_RANK) >= 20)
+    .filter((row) => String(row.IS_PRECISE) === '1')
     .map((row) => toRef(row, 'concept'))
+    .filter((row) => row.code && row.name);
+  const boards = rows
+    .map((row) => toRef(row, Number(row.BOARD_RANK) <= 3 ? 'industry' : 'concept'))
     .filter((row) => row.code && row.name);
 
   return {
@@ -40,7 +43,21 @@ export function parseStockBoardMembership(rows: RawBoardRow[]) {
       ? toRef(industryRow, 'industry')
       : null,
     concepts,
+    boards,
   };
+}
+
+export function parseStocksBoardMembership(rows: RawBoardRow[]) {
+  const grouped = new Map<string, RawBoardRow[]>();
+  rows.forEach((row) => {
+    const stockCode = row.SECUCODE?.replace(/\D/g, '').slice(-6) ?? '';
+    if (!stockCode) return;
+    const stockRows = grouped.get(stockCode);
+    if (stockRows) stockRows.push(row);
+    else grouped.set(stockCode, [row]);
+  });
+  return [...grouped]
+    .map(([stockCode, stockRows]) => ({ stockCode, ...parseStockBoardMembership(stockRows) }));
 }
 
 export function groupWatchlistQuotesByBoard(
@@ -50,11 +67,11 @@ export function groupWatchlistQuotesByBoard(
   const quotesByCode = new Map(quotes.map((quote) => [quote.code.replace(/\D/g, '').slice(-6), quote]));
   const grouped: Record<string, WatchlistQuote[]> = {};
 
-  memberships.forEach(({ stockCode, industry, concepts }) => {
+  memberships.forEach(({ stockCode, boards }) => {
     const quote = quotesByCode.get(stockCode.replace(/\D/g, '').slice(-6));
     if (!quote) return;
-    [industry, ...concepts].forEach((board) => {
-      if (board) (grouped[board.code] ??= []).push(quote);
+    boards.forEach((board) => {
+      (grouped[board.code] ??= []).push(quote);
     });
   });
 
