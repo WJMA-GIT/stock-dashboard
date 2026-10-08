@@ -7,7 +7,7 @@ test('筹码分布使用 SDK 专用接口，保留参数、缓存并传播上游
   const server = await createServer({
     configFile: false,
     optimizeDeps: { noDiscovery: true },
-    server: { middlewareMode: true },
+    server: { middlewareMode: true, ws: false },
     resolve: { alias: { '@': fileURLToPath(new URL('../src', import.meta.url)) } },
   });
   t.after(() => server.close());

@@ -636,6 +636,8 @@ export async function getMarketFundFlow() {
  */
 export async function getFundFlowRank(options?: {
   indicator?: 'today' | '3day' | '5day' | '10day';
+  page?: number;
+  pageSize?: number;
 }) {
   const key = getCacheKey('getFundFlowRank', options);
   return withCache(key, DEFAULT_TTL.fundFlow, () => sdk.fundFlow.rank(options));
@@ -647,6 +649,8 @@ export async function getFundFlowRank(options?: {
 export async function getSectorFundFlowRank(options?: {
   indicator?: 'today' | '3day' | '5day' | '10day';
   sectorType?: 'industry' | 'concept' | 'region';
+  page?: number;
+  pageSize?: number;
 }) {
   const key = getCacheKey('getSectorFundFlowRank', options);
   return withCache(key, DEFAULT_TTL.fundFlow, () =>
@@ -746,10 +750,11 @@ export async function getStockChanges(
     | 'low_open_5d'
     | 'gap_down'
     | 'low_60d'
-    | 'drop_60d' = 'large_buy'
+    | 'drop_60d' = 'large_buy',
+  options?: { page?: number; pageSize?: number }
 ) {
-  const key = getCacheKey('getStockChanges', type);
-  return withCache(key, DEFAULT_TTL.stockChanges, () => sdk.marketEvent.stockChanges(type));
+  const key = getCacheKey('getStockChanges', type, options);
+  return withCache(key, DEFAULT_TTL.stockChanges, () => sdk.marketEvent.stockChanges(type, options));
 }
 
 /**

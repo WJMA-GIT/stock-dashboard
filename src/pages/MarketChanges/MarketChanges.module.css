@@ -29,7 +29,8 @@
 .changeTag.up { color: var(--color-rise); background: var(--color-rise-bg); }
 .changeTag.down { color: var(--color-fall); background: var(--color-fall-bg); }
 .info { overflow: hidden; font-size: var(--font-size-sm); color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; }
-.footer { display: flex; justify-content: space-between; padding: 10px var(--spacing-lg); font-size: var(--font-size-xs); color: var(--text-tertiary); background: var(--bg-tertiary); }
+.footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--spacing-sm); padding: 10px var(--spacing-lg); font-size: var(--font-size-xs); color: var(--text-tertiary); background: var(--bg-tertiary); }
+.pagination { display: flex; align-items: center; gap: var(--spacing-sm); }
 
 @media (max-width: 768px) {
   .header, .toolbar { align-items: stretch; flex-direction: column; }
