@@ -8,7 +8,6 @@
  */
 
 import { StockSDK } from 'stock-sdk';
-import { calcChipDistribution } from 'stock-sdk/indicators';
 import type { CacheItem } from '@/types';
 import type {
   DividendDetail,
@@ -791,11 +790,8 @@ export async function getDragonTigerDetail(options: {
 /** 获取最近交易日筹码分布，最后一日附带筹码峰直方图 */
 export async function getChipDistribution(symbol: string) {
   const key = getCacheKey('getChipDistribution', symbol);
-  return withCache(key, DEFAULT_TTL.historyKline, async () =>
-    calcChipDistribution(
-      await sdk.kline.cn(symbol, { period: 'daily', adjust: 'qfq' }),
-      { range: 120, tail: 7, includeHistogram: 'last' }
-    )
+  return withCache(key, DEFAULT_TTL.historyKline, () =>
+    sdk.chips.cn(symbol, { adjust: 'qfq', range: 120, days: 7, includeHistogram: 'last' })
   );
 }
 
