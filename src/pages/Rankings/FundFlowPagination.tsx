@@ -3,13 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Empty, Loading, Tabs } from '@/components/common';
 import { useAppSettings } from '@/contexts';
 import { usePolling } from '@/hooks';
-import { getFundFlowRank, getSectorFundFlowRank } from '@/services/sdk';
+import {
+  FUND_FLOW_PAGE_SIZE as PAGE_SIZE,
+  getFundFlowRanking,
+  readFundFlowRanking,
+  type FundFlowRankingSnapshot,
+  type FundFlowRankingType,
+} from '@/services/fundFlowRankings';
 import { formatPercent, formatYuanAmount, getChangeColorClass } from '@/utils/format';
-import type { FundFlowRankItem, SectorFundFlowItem } from 'stock-sdk';
+import { FundFlowStatus } from './FundFlowStatus';
 import styles from './Rankings.module.css';
 
-type FlowType = 'industry' | 'concept' | 'stock';
-const PAGE_SIZE = 50;
 const FLOW_TYPES = [
   { key: 'industry', label: '行业' },
   { key: 'concept', label: '概念' },
@@ -17,13 +21,13 @@ const FLOW_TYPES = [
 ];
 
 export function FundFlowPagination() {
-  const [query, setQuery] = useState<{ type: FlowType; page: number }>({ type: 'industry', page: 1 });
+  const [query, setQuery] = useState<{ type: FundFlowRankingType; page: number }>({ type: 'industry', page: 1 });
   return (
     <Card title="资金流排名" padding="sm">
       <Tabs
         items={FLOW_TYPES}
         activeKey={query.type}
-        onChange={(type) => setQuery({ type: type as FlowType, page: 1 })}
+        onChange={(type) => setQuery({ type: type as FundFlowRankingType, page: 1 })}
         size="sm"
       />
       <FundFlowPage
@@ -36,54 +40,57 @@ export function FundFlowPagination() {
 }
 
 function FundFlowPage({ type, page, onPageChange }: {
-  type: FlowType;
+  type: FundFlowRankingType;
   page: number;
   onPageChange: (page: number) => void;
 }) {
   const navigate = useNavigate();
   const { getRefreshInterval } = useAppSettings();
-  const [rows, setRows] = useState<(FundFlowRankItem | SectorFundFlowItem)[] | null>(null);
+  const [snapshot, setSnapshot] = useState<FundFlowRankingSnapshot | null>(() => readFundFlowRanking(type, page));
   const [error, setError] = useState('');
-  const mounted = useRef(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const requestId = useRef({ value: 0 });
   useEffect(() => {
-    mounted.current = true;
-    return () => { mounted.current = false; };
+    const request = requestId.current;
+    return () => { request.value++; };
   }, []);
 
-  const fetchPage = useCallback(async () => {
+  const fetchPage = useCallback(async (force = false) => {
+    const id = ++requestId.current.value;
+    setIsLoading(true);
     try {
-      const options = { indicator: 'today' as const, page, pageSize: PAGE_SIZE };
-      const data = type === 'stock'
-        ? await getFundFlowRank(options)
-        : await getSectorFundFlowRank({ ...options, sectorType: type });
-      if (!mounted.current) return;
-      setRows(data);
+      const data = await getFundFlowRanking(type, page, 'inflow', force);
+      if (id !== requestId.current.value) return;
+      setSnapshot(data);
       setError('');
     } catch (cause) {
-      if (!mounted.current) return;
+      if (id !== requestId.current.value) return;
       setError(cause instanceof Error ? cause.message : '资金流排名加载失败');
+    } finally {
+      if (id === requestId.current.value) setIsLoading(false);
     }
   }, [page, type]);
 
-  const { isLoading, refresh } = usePolling(fetchPage, {
-    interval: Math.max(getRefreshInterval('list') * 4, 60000),
+  usePolling(fetchPage, {
+    interval: Math.max(getRefreshInterval('list'), 30000),
     pauseOnHidden: true,
   });
 
   return (
     <>
-      <div className={styles.flowHeader}>今日主力净流入降序 · 每页 {PAGE_SIZE} 条</div>
-      {error ? (
+      <div className={styles.flowHeader}>主力净流入降序 · 每页 {PAGE_SIZE} 条</div>
+      <FundFlowStatus snapshot={snapshot} error={!!error} />
+      {!snapshot && error ? (
         <Empty title="加载失败" description={error} action={
-          <Button size="sm" loading={isLoading} onClick={() => void refresh()}>重试</Button>
+          <Button size="sm" loading={isLoading} onClick={() => void fetchPage(true)}>重试</Button>
         } />
-      ) : rows === null ? (
+      ) : snapshot === null ? (
         <Loading text="加载资金流排名..." />
-      ) : rows.length === 0 ? (
+      ) : snapshot.rows.length === 0 ? (
         <Empty title="本页暂无数据" />
       ) : (
         <div className={styles.flowList}>
-          {rows.map((item, index) => {
+          {snapshot.rows.map((item, index) => {
             const rank = (page - 1) * PAGE_SIZE + index + 1;
             return (
               <button
@@ -106,9 +113,8 @@ function FundFlowPage({ type, page, onPageChange }: {
       <div className={styles.pagination}>
         <Button size="sm" disabled={page <= 1 || isLoading} onClick={() => onPageChange(page - 1)}>上一页</Button>
         <span aria-live="polite">第 {page} 页</span>
-        {/* ponytail: SDK 未返回总数，满页才允许继续；提供 total 后再显示总页数。 */}
-        <Button size="sm" disabled={isLoading || !!error || rows?.length !== PAGE_SIZE} onClick={() => onPageChange(page + 1)}>下一页</Button>
-        <Button size="sm" loading={isLoading} onClick={() => void refresh()}>刷新</Button>
+        <Button size="sm" disabled={isLoading || !snapshot || page * PAGE_SIZE >= snapshot.total} onClick={() => onPageChange(page + 1)}>下一页</Button>
+        <Button size="sm" loading={isLoading} onClick={() => void fetchPage(true)}>刷新</Button>
       </div>
     </>
   );

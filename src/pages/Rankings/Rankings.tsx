@@ -19,8 +19,6 @@ import { useAppSettings, useBoardData } from '@/contexts';
 import { usePolling } from '@/hooks';
 import {
   getFullQuotes,
-  getFundFlowRank,
-  getSectorFundFlowRank,
   getStocksBoardMembership,
 } from '@/services/sdk';
 import { getAllWatchlistCodes } from '@/services/storage';
@@ -28,12 +26,11 @@ import { groupWatchlistQuotesByBoard } from '@/services/stockBoardMembership';
 import {
   formatPercent,
   formatTurnover,
-  formatYuanAmount,
   getChangeColorClass,
 } from '@/utils/format';
 import { sortRows, type SortDirection } from '@/utils/tableSort';
-import type { FundFlowRankItem, IndustryBoard, SectorFundFlowItem } from 'stock-sdk';
-import { splitFundFlowRanks } from './fundFlowRanking';
+import type { IndustryBoard } from 'stock-sdk';
+import { FundFlowLeaders } from './FundFlowLeaders';
 import { FundFlowPagination } from './FundFlowPagination';
 import styles from './Rankings.module.css';
 
@@ -89,30 +86,15 @@ export function Rankings() {
   const { industryList, conceptList, loading } = useBoardData();
   const [rankType, setRankType] = useState<SortKey>('rise');
   const [fundFlowMode, setFundFlowMode] = useState('paged');
-  const [industryFundFlows, setIndustryFundFlows] = useState<SectorFundFlowItem[]>([]);
-  const [conceptFundFlows, setConceptFundFlows] = useState<SectorFundFlowItem[]>([]);
-  const [stockFundFlows, setStockFundFlows] = useState<FundFlowRankItem[]>([]);
   const [watchlistByBoard, setWatchlistByBoard] = useState<ReturnType<typeof groupWatchlistQuotesByBoard>>({});
-  const [watchlistLoaded, setWatchlistLoaded] = useState(false);
   const [boardSorts, setBoardSorts] = useState<Record<'industry' | 'concept', BoardSort>>({
     industry: null,
     concept: null,
   });
 
-  const fetchFundFlows = useCallback(async () => {
-    const [industry, concept, stocks] = await Promise.all([
-      getSectorFundFlowRank({ indicator: 'today', sectorType: 'industry' }),
-      getSectorFundFlowRank({ indicator: 'today', sectorType: 'concept' }),
-      getFundFlowRank({ indicator: 'today' }),
-    ]);
-    setIndustryFundFlows(industry);
-    setConceptFundFlows(concept);
-    setStockFundFlows(stocks);
-  }, []);
-
   const fetchWatchlistBoards = useCallback(async () => {
-    const watchlistCodes = getAllWatchlistCodes();
     try {
+      const watchlistCodes = getAllWatchlistCodes();
       if (watchlistCodes.length === 0) {
         setWatchlistByBoard({});
         return;
@@ -122,17 +104,10 @@ export function Rankings() {
         getStocksBoardMembership(watchlistCodes),
       ]);
       setWatchlistByBoard(groupWatchlistQuotesByBoard(quotes, memberships));
-    } finally {
-      setWatchlistLoaded(true);
+    } catch (error) {
+      console.error('[Rankings] 自选板块加载失败:', error);
     }
   }, []);
-
-  const { isLoading: fundFlowLoading } = usePolling(fetchFundFlows, {
-    enabled: fundFlowMode === 'full',
-    interval: Math.max(getRefreshInterval('list') * 4, 60000),
-    pauseOnHidden: true,
-    immediate: true,
-  });
 
   usePolling(fetchWatchlistBoards, {
     interval: Math.max(getRefreshInterval('list'), 5000),
@@ -167,27 +142,6 @@ export function Rankings() {
     ];
   }, [boardSorts, conceptList, industryList, rankType]);
 
-  const fundFlowSections = useMemo(
-    () => [
-      {
-        title: '行业板块资金流',
-        type: 'industry' as const,
-        ...splitFundFlowRanks(industryFundFlows),
-      },
-      {
-        title: '概念板块资金流',
-        type: 'concept' as const,
-        ...splitFundFlowRanks(conceptFundFlows),
-      },
-      {
-        title: '主力净流入',
-        type: 'stock' as const,
-        ...splitFundFlowRanks(stockFundFlows),
-      },
-    ],
-    [conceptFundFlows, industryFundFlows, stockFundFlows]
-  );
-
   const handleBoardClick = (code: string, type: 'industry' | 'concept') => {
     navigate(`/boards/${type}/${code}`);
   };
@@ -200,17 +154,6 @@ export function Rankings() {
         : { key, direction: key === 'rank' || key === 'name' || key === 'leadingStock' ? 'asc' : 'desc' },
     }));
   };
-
-  const handleFundFlowClick = (
-    code: string,
-    type: 'industry' | 'concept' | 'stock'
-  ) => {
-    navigate(type === 'stock' ? `/s/${code}` : `/boards/${type}/${code}`);
-  };
-
-  if (loading || !watchlistLoaded) {
-    return <Loading fullScreen text="加载榜单数据..." />;
-  }
 
   return (
     <div className={styles.rankings}>
@@ -225,7 +168,7 @@ export function Rankings() {
       <div className={styles.content}>
         {sections.map((section) => (
           <Card key={section.type} title={section.title} padding="sm">
-            <div className={styles.rankTable}>
+            {loading && section.list.length === 0 ? <Loading text="加载板块榜单..." /> : <div className={styles.rankTable}>
               <div className={styles.tableHeader} role="row">
                 {([
                   ['rank', '排名', styles.colRank],
@@ -314,7 +257,7 @@ export function Rankings() {
                   </motion.div>
                 ))}
               </div>
-            </div>
+            </div>}
           </Card>
         ))}
       </div>
@@ -324,66 +267,7 @@ export function Rankings() {
         activeKey={fundFlowMode}
         onChange={setFundFlowMode}
       />
-      {fundFlowMode === 'paged' ? <FundFlowPagination /> : <div className={styles.flowSections}>
-        {fundFlowSections.map((section) => (
-          <Card key={section.type} title={section.title} padding="sm">
-            <div className={styles.flowColumns}>
-              {[
-                { key: 'inflow', title: '净流入最多', items: section.inflows },
-                { key: 'outflow', title: '净流出最多', items: section.outflows },
-              ].map((column) => (
-                <div key={column.key} className={styles.flowColumn}>
-                  <div className={styles.flowHeader}>{column.title}</div>
-                  {column.items.length === 0 && fundFlowLoading ? (
-                    <Loading size="md" />
-                  ) : column.items.length === 0 ? (
-                    <div className={styles.flowEmpty}>暂无数据</div>
-                  ) : (
-                    <div className={styles.flowList}>
-                      {column.items.map((item, index) => (
-                        <button
-                          key={item.code}
-                          type="button"
-                          className={`${styles.flowRow} ${section.type === 'stock' ? '' : styles.flowBoardRow}`}
-                          onClick={() => handleFundFlowClick(item.code, section.type)}
-                        >
-                          <span className={`${styles.rankNum} ${index < 3 ? styles.top3 : ''}`}>
-                            {index + 1}
-                          </span>
-                          <span className={styles.flowName}>
-                            <span>{item.name}</span>
-                            <span>{item.code}</span>
-                          </span>
-                          {section.type !== 'stock' && (
-                            <span className={styles.flowWatchlist}>
-                              {watchlistByBoard[item.code]?.map((stock) => (
-                                <span
-                                  key={stock.code}
-                                  className={`${styles.watchlistStock} ${getChangeColorClass(stock.changePercent)}`}
-                                >
-                                  {stock.name} {formatPercent(stock.changePercent)}
-                                </span>
-                              ))}
-                            </span>
-                          )}
-                          <span className={styles.flowValue}>
-                            <span className={getChangeColorClass(item.mainNetInflow)}>
-                              {formatYuanAmount(item.mainNetInflow)}
-                            </span>
-                            <span className={getChangeColorClass(item.mainNetInflowPercent)}>
-                              {formatPercent(item.mainNetInflowPercent)}
-                            </span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </Card>
-        ))}
-      </div>}
+      {fundFlowMode === 'paged' ? <FundFlowPagination /> : <FundFlowLeaders watchlistByBoard={watchlistByBoard} />}
     </div>
   );
 }
