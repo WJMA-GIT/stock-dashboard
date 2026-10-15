@@ -137,10 +137,9 @@ export function parseProxyEndpoints(text: string): ProxyEndpoint[] {
   });
 }
 
-export function getProxyExtractionUrl(credentials: ProxyCredentials, protocol: 'http:' | 'https:' = 'http:'): string {
+export function getProxyExtractionUrl(credentials: ProxyCredentials): string {
   if (!credentials.uid.trim() || !credentials.vkey.trim()) throw new Error('请填写用户 UID 和提取 VKey');
-  if (protocol !== 'http:' && protocol !== 'https:') throw new Error('提取协议无效');
-  const url = new URL(`${protocol}//api.xiequ.cn/VAD/GetIp.aspx`);
+  const url = new URL('http://api.xiequ.cn/VAD/GetIp.aspx');
   url.search = new URLSearchParams({
     act: 'get', uid: credentials.uid.trim(), vkey: credentials.vkey.trim(), num: '5', time: '30',
     plat: '1', re: '0', type: '0', so: '1', ow: '1', spl: '1', addr: '', db: '1',
@@ -149,5 +148,5 @@ export function getProxyExtractionUrl(credentials: ProxyCredentials, protocol: '
 }
 
 export async function extractProxyEndpoints(credentials: ProxyCredentials): Promise<ProxyEndpoint[]> {
-  return parseProxyEndpoints(await request(getProxyExtractionUrl(credentials, 'https:')));
+  return parseProxyEndpoints(await request(getProxyExtractionUrl(credentials)));
 }

@@ -178,7 +178,7 @@ test('拒绝未确认的删除结果，网络异常与业务错误不回显密�
   await assert.rejects(getWhitelist(credentials), (error: Error) => !error.message.includes(credentials.ukey));
 });
 
-test('提取URL保留指定参数，HTTPS失败不自动降级HTTP', async (t) => {
+test('提取URL保留指定参数，仅发HTTP请求且失败不重复提取', async (t) => {
   const url = new URL(getProxyExtractionUrl({ ...credentials, ukey: '' }));
   assert.equal(url.href.startsWith('http://api.xiequ.cn/VAD/GetIp.aspx?'), true);
   assert.deepEqual(Object.fromEntries(url.searchParams), {
@@ -186,10 +186,10 @@ test('提取URL保留指定参数，HTTPS失败不自动降级HTTP', async (t) =
     type: '0', so: '1', ow: '1', spl: '1', addr: '', db: '1',
   });
   const calls: URL[] = [];
-  t.mock.method(globalThis, 'fetch', async (input: string) => { calls.push(new URL(input)); throw new Error('TLS failure'); });
+  t.mock.method(globalThis, 'fetch', async (input: string) => { calls.push(new URL(input)); throw new Error('request blocked'); });
   await assert.rejects(extractProxyEndpoints(credentials), /请求失败/);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].protocol, 'https:');
+  assert.equal(calls[0].protocol, 'http:');
   t.mock.method(globalThis, 'fetch', async () => new Response(`${currentIp}:8080`));
   assert.deepEqual(await extractProxyEndpoints(credentials), [{ ip: currentIp, port: 8080 }]);
   assert.throws(() => getProxyExtractionUrl({ ...credentials, vkey: '' }), /VKey/);

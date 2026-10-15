@@ -4,7 +4,7 @@ import { Button, Card } from '@/components/common';
 import { useAppSettings } from '@/contexts';
 import { usePolling } from '@/hooks';
 import {
-  detectPublicIp, extractProxyEndpoints, getProxyExtractionUrl, getWhitelist,
+  detectPublicIp, getWhitelist,
   parseProxyEndpoints, removeWhitelistIp, syncWhitelist,
   type ProxyEndpoint, type WhiteListEntry,
 } from '@/services/proxyManagement';
@@ -25,7 +25,6 @@ export function ProxyManagement() {
   const [error, setError] = useState('');
   const dirty = draft.uid !== config.uid || draft.ukey !== config.ukey || draft.vkey !== config.vkey;
   const hasWhiteCredentials = /^\d+$/.test(config.uid) && !!config.ukey.trim() && !dirty;
-  const hasExtractCredentials = /^\d+$/.test(config.uid) && !!config.vkey.trim() && !dirty;
 
   const run = useCallback(async (label: string, action: () => Promise<void>) => {
     if (busyRef.current) return;
@@ -84,20 +83,6 @@ export function ProxyManagement() {
     setMessage(`已删除白名单 IP：${ip}`);
   });
 
-  const openExtractionPage = () => {
-    if (busyRef.current) return;
-    const page = window.open('about:blank', '_blank');
-    if (!page) { setError('提取页被浏览器拦截，请允许此站点打开新标签页后重试。'); return; }
-    page.opener = null;
-    void run('同步并打开提取页', async () => {
-      try {
-        await synchronize();
-        page.location.replace(getProxyExtractionUrl(config, 'http:'));
-        setMessage('白名单已同步。请在提取页复制返回结果，再粘贴到下方解析。');
-      } catch (cause) { page.close(); throw cause; }
-    });
-  };
-
   return (
     <Card>
       <div className={styles.section}>
@@ -143,15 +128,7 @@ export function ProxyManagement() {
               </div>
             )) : <span className={styles.settingDesc}>尚未读取白名单或白名单为空</span>}
           </div>
-          <div className={styles.proxyActions}>
-            <Button size="sm" disabled={!!busy || !hasExtractCredentials || !hasWhiteCredentials} onClick={openExtractionPage}>同步并打开提取页（HTTP）</Button>
-            <Button size="sm" disabled={!!busy || !hasExtractCredentials || !hasWhiteCredentials} onClick={() => void run('HTTPS 提取', async () => {
-              await synchronize();
-              const result = await extractProxyEndpoints(config); setProxies(result);
-              setMessage(`已提取 ${result.length} 个代理地址，请手动配置到系统或浏览器。`);
-            })}>尝试 HTTPS 接口提取</Button>
-          </div>
-          <p className={styles.settingDesc}>先同步白名单，再提取。每次提取 5 个地址，可能消耗套餐额度；不会自动重复提取。HTTP 接口无法被 HTTPS 站点直接读取，若 HTTPS 提取不可用，请在新页复制结果并粘贴到下方。</p>
+          <p className={styles.settingDesc}>代理提取仅使用 HTTP 接口。HTTPS 网页可能被浏览器阻止读取该接口；普通网页无法直接把 IP:端口设置为请求代理。</p>
           <label className={styles.proxyImport}>
             <span className={styles.settingLabel}>粘贴代理接口返回的文本或 JSON</span>
             <textarea className={styles.proxyTextarea} rows={4} value={importText} disabled={!!busy}

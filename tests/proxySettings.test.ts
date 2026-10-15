@@ -53,7 +53,7 @@ test('代理配置兼容旧设置，按账户校验跟踪IP，设置页不会自
     value: { settings: legacy, updateSettings: () => {}, getRefreshInterval: () => 15000 },
   }, createElement(Settings)));
   assert.match(html, /代理与白名单管理/);
-  assert.match(html, /同步并打开提取页/);
+  assert.doesNotMatch(html, /同步并打开提取页|尝试 HTTPS 接口提取/);
   assert.match(html, /手动应用代理/);
   assert.match(html, /仅清理本程序/);
   assert.equal((html.match(/type="password"/g) ?? []).length, 2);
