@@ -8,6 +8,7 @@ import { RefreshCw, Palette, BarChart2, Info } from 'lucide-react';
 import { Card, NumberField } from '@/components/common';
 import { useAppSettings } from '@/contexts';
 import styles from './Settings.module.css';
+import { ProxyManagement } from './ProxyManagement';
 
 function parsePeriods(value: string, fallback: number[]) {
   const periods = value
@@ -67,6 +68,8 @@ export function Settings() {
       >
         设置
       </motion.h1>
+
+      <ProxyManagement />
 
       <Card>
         <div className={styles.section}>

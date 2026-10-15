@@ -11,6 +11,7 @@ import type {
   ColumnConfig,
 } from '@/types';
 import { normalizeStockCode } from '@/utils/format';
+import { isIPv4 } from './proxyManagement';
 
 // 存储键（eod 三个 key 沿用旧字面量，保证既有用户数据不丢）
 const STORAGE_KEYS = {
@@ -28,6 +29,7 @@ const STORAGE_KEYS = {
 
 // 默认设置
 const DEFAULT_SETTINGS: AppSettings = {
+  proxyManagement: { uid: '', ukey: '', vkey: '', autoSync: false, managedIps: {} },
   refreshInterval: {
     list: 0, // 0 表示使用默认值
     detail: 5000,
@@ -395,10 +397,20 @@ export function getSettings(): AppSettings {
     isPlainObject
   );
   const parsed = safeJsonParse<Partial<AppSettings>>(data, {}, isPlainObject);
+  const proxy: Record<string, unknown> = isPlainObject(parsed.proxyManagement) ? parsed.proxyManagement : {};
 
   return {
     ...DEFAULT_SETTINGS,
     ...parsed,
+    proxyManagement: {
+      uid: typeof proxy.uid === 'string' ? proxy.uid : '',
+      ukey: typeof proxy.ukey === 'string' ? proxy.ukey : '',
+      vkey: typeof proxy.vkey === 'string' ? proxy.vkey : '',
+      autoSync: proxy.autoSync === true,
+      managedIps: isPlainObject(proxy.managedIps)
+        ? Object.fromEntries(Object.entries(proxy.managedIps).filter((entry): entry is [string, string] => /^\d+$/.test(entry[0]) && typeof entry[1] === 'string' && isIPv4(entry[1])))
+        : {},
+    },
     refreshInterval: {
       ...DEFAULT_SETTINGS.refreshInterval,
       ...parsed.refreshInterval,

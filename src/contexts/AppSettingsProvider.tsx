@@ -17,6 +17,10 @@ function mergeSettings(current: AppSettings, updates: Partial<AppSettings>): App
   return {
     ...current,
     ...updates,
+    proxyManagement: {
+      ...current.proxyManagement,
+      ...updates.proxyManagement,
+    },
     refreshInterval: {
       ...current.refreshInterval,
       ...updates.refreshInterval,
