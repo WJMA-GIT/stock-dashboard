@@ -210,35 +210,6 @@
 }
 
 /* 响应式 */
-.proxyActions,
-.proxyEntry,
-.proxyToggle {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
-}
-
-.proxyActions a { color: var(--color-accent); font-size: var(--font-size-xs); }
-.proxyEntry { justify-content: space-between; font-size: var(--font-size-sm); }
-.proxyList,
-.proxyImport { display: flex; flex-direction: column; gap: var(--spacing-sm); }
-.proxyToggle { font-size: var(--font-size-sm); color: var(--text-secondary); }
-.proxyToggle input { width: 16px; height: 16px; accent-color: var(--color-accent); }
-.proxyTextarea {
-  width: 100%;
-  padding: var(--spacing-sm);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  background: var(--bg-tertiary);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  resize: vertical;
-}
-.proxyTextarea:focus { outline: none; border-color: var(--border-focus); }
-.proxyError { color: var(--text-primary); padding: var(--spacing-sm); border: 1px solid var(--border-primary); border-radius: var(--radius-md); overflow-wrap: anywhere; }
-
 @media (max-width: 768px) {
   .settingItem {
     flex-direction: column;

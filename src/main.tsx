@@ -9,14 +9,11 @@ import {
 } from '@grafana/faro-react';
 import { TracingInstrumentation } from '@grafana/faro-web-tracing';
 import './index.css';
-import { PROXY_MANAGEMENT_URLS } from './services/proxyManagement';
 
 // Faro 必须先于 router 模块求值（withFaroRouterInstrumentation 依赖已初始化的实例），
 // 且先于首次渲染（否则初始渲染期的错误不会上报）——静态 import App 会被提升到本段之前，故用动态 import
 if (import.meta.env.PROD) {
   initializeFaro({
-    // 这些接口的认证信息位于查询参数，不能进入请求追踪或网络遥测。
-    ignoreUrls: [PROXY_MANAGEMENT_URLS],
     url: 'https://faro-collector-prod-ap-southeast-1.grafana.net/collect/d730ce3555958ea089459acd1cd6886b',
     app: {
       name: 'stock-dashboard',

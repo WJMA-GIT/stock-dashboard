@@ -34,6 +34,7 @@ import {
 import { sortRows, type SortDirection } from '@/utils/tableSort';
 import type { FundFlowRankItem, IndustryBoard, SectorFundFlowItem } from 'stock-sdk';
 import { splitFundFlowRanks } from './fundFlowRanking';
+import { FundFlowPagination } from './FundFlowPagination';
 import styles from './Rankings.module.css';
 
 // 榜单类型
@@ -87,6 +88,7 @@ export function Rankings() {
   const { getRefreshInterval } = useAppSettings();
   const { industryList, conceptList, loading } = useBoardData();
   const [rankType, setRankType] = useState<SortKey>('rise');
+  const [fundFlowMode, setFundFlowMode] = useState('paged');
   const [industryFundFlows, setIndustryFundFlows] = useState<SectorFundFlowItem[]>([]);
   const [conceptFundFlows, setConceptFundFlows] = useState<SectorFundFlowItem[]>([]);
   const [stockFundFlows, setStockFundFlows] = useState<FundFlowRankItem[]>([]);
@@ -126,6 +128,7 @@ export function Rankings() {
   }, []);
 
   const { isLoading: fundFlowLoading } = usePolling(fetchFundFlows, {
+    enabled: fundFlowMode === 'full',
     interval: Math.max(getRefreshInterval('list') * 4, 60000),
     pauseOnHidden: true,
     immediate: true,
@@ -316,7 +319,12 @@ export function Rankings() {
         ))}
       </div>
 
-      <div className={styles.flowSections}>
+      <Tabs
+        items={[{ key: 'paged', label: '资金流分页排名' }, { key: 'full', label: '流入/流出榜' }]}
+        activeKey={fundFlowMode}
+        onChange={setFundFlowMode}
+      />
+      {fundFlowMode === 'paged' ? <FundFlowPagination /> : <div className={styles.flowSections}>
         {fundFlowSections.map((section) => (
           <Card key={section.type} title={section.title} padding="sm">
             <div className={styles.flowColumns}>
@@ -375,7 +383,7 @@ export function Rankings() {
             </div>
           </Card>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }

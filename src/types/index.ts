@@ -64,14 +64,6 @@ export interface ColumnConfig {
 }
 
 /** 应用设置 */
-export interface ProxyManagementSettings {
-  uid: string;
-  ukey: string;
-  vkey: string;
-  autoSync: boolean;
-  managedIps: Record<string, string>;
-}
-
 export interface AppSettings {
   refreshInterval: {
     list: number;
@@ -81,7 +73,6 @@ export interface AppSettings {
   colorMode: 'red-rise' | 'green-rise';
   heatmapConfig: HeatmapConfig;
   indicatorConfig: IndicatorConfig;
-  proxyManagement: ProxyManagementSettings;
 }
 
 /** 搜索历史项 */
